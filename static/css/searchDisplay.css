@@ -63,3 +63,71 @@
     color: #7f8c8d;
     margin-top: 2px;
 }
+
+.search-container {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 0px;
+    align-items: stretch;
+    /* Align items to stretch vertically */
+}
+
+.search-container input[type="text"] {
+    flex-grow: 1;
+    min-width: 200px;
+    /* Ensure a minimum width for the search box */
+}
+
+.search-container select {
+    width: auto;
+    /* Allow the select to size based on content */
+    max-width: 200px;
+    /* Maximum width for the dropdown */
+}
+
+.search-container button {
+    white-space: nowrap;
+    /* Prevent button text from wrapping */
+}
+
+/* Ensure consistent height for all elements */
+.search-container input[type="text"],
+.search-container select,
+.search-container button {
+    height: 38px;
+    /* Adjust this value as needed */
+    box-sizing: border-box;
+}
+
+/* For smaller screens, stack the elements vertically with tight spacing */
+@media (max-width: 600px) {
+    .search-container {
+        flex-direction: column;
+        gap: 0;
+    }
+
+    .search-container input[type="text"],
+    .search-container select,
+    .search-container button {
+        width: 100%;
+        max-width: none;
+        margin-bottom: -1px;
+        /* Create overlap */
+        position: relative;
+        /* For z-index to work */
+    }
+
+    .search-container input[type="text"] {
+        z-index: 3;
+    }
+
+    .search-container select {
+        z-index: 2;
+    }
+
+    .search-container button {
+        z-index: 1;
+        margin-bottom: 5px;
+        /* Remove negative margin from last element */
+    }
+}

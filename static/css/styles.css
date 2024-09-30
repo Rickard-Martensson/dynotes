@@ -5,6 +5,14 @@
     /*URL to font*/
 }
 
+@font-face {
+    font-family: 'Tiempos';
+    /*a name to be used later*/
+    src: url('TiemposText-Regular.otf');
+    /*URL to font*/
+}
+
+
 :root {
     --background-color: #fcf9f4;
     --border-color: #84817a;
@@ -98,6 +106,11 @@ button.blue {
 
 button.blue:hover {
     background-color: #2980b9;
+}
+
+#results {
+    font-family: Tiempos, Georgia, 'Times New Roman', Times, serif;
+    font-size: large;
 }
 
 /* #results .note {

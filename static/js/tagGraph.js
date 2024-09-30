@@ -675,10 +675,11 @@ async function searchNotes() {
     const searchText = document.getElementById("searchText").value;
     const password = document.getElementById("searchPassword").value;
     const tags = Array.from(window.tagGraph.selectedNodes).map((n) => n.tag_id);
+    const sortCriteria = document.getElementById("sortCriteria").value;
     const response = await fetch('/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: searchText, tags, password })
+        body: JSON.stringify({ text: searchText, tags, password, sortCriteria })
     });
     if (response.ok) {
         const results = await response.json();
@@ -706,6 +707,23 @@ async function updatePassword() {
 function displaySearchResults(results) {
     const resultsContainer = document.getElementById("results");
     resultsContainer.innerHTML = "";
+    // Sort the results based on the selected criteria
+    const [criteria, order] = document.getElementById("sortCriteria").value.split('-');
+    results.sort((a, b) => {
+        let comparison = 0;
+        switch (criteria) {
+            case 'stars':
+                comparison = a.rating - b.rating;
+                break;
+            case 'date':
+                comparison = a.date - b.date;
+                break;
+            case 'visibility':
+                comparison = a.visibility - b.visibility;
+                break;
+        }
+        return order === 'desc' ? -comparison : comparison;
+    });
     const notesContainer = document.createElement("div");
     notesContainer.className = "notes-container";
     results.forEach(note => {

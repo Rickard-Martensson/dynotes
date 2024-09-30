@@ -790,11 +790,12 @@ async function searchNotes(): Promise<void> {
     const searchText = (document.getElementById("searchText") as HTMLInputElement).value;
     const password = (document.getElementById("searchPassword") as HTMLInputElement).value;
     const tags = Array.from((window as any).tagGraph.selectedNodes as Set<Tag>).map((n: Tag) => n.tag_id);
+    const sortCriteria = (document.getElementById("sortCriteria") as HTMLInputElement).value;
 
     const response = await fetch('/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: searchText, tags, password })
+        body: JSON.stringify({ text: searchText, tags, password, sortCriteria })
     });
 
     if (response.ok) {
@@ -825,7 +826,7 @@ async function updatePassword(): Promise<void> {
 interface SearchResult {
     text: string;
     author: string;
-    date: number;
+    date: number; // unix timestamp
     rating: number;
     source: string;
     visibility: number;
@@ -838,6 +839,24 @@ interface OriginalNoteData extends SearchResult { }
 function displaySearchResults(results: SearchResult[]): void {
     const resultsContainer = document.getElementById("results")!;
     resultsContainer.innerHTML = "";
+
+    // Sort the results based on the selected criteria
+    const [criteria, order] = (document.getElementById("sortCriteria") as HTMLSelectElement).value.split('-');
+    results.sort((a, b) => {
+        let comparison = 0;
+        switch (criteria) {
+            case 'stars':
+                comparison = a.rating - b.rating;
+                break;
+            case 'date':
+                comparison = a.date - b.date;
+                break;
+            case 'visibility':
+                comparison = a.visibility - b.visibility;
+                break;
+        }
+        return order === 'desc' ? -comparison : comparison;
+    });
 
     const notesContainer = document.createElement("div");
     notesContainer.className = "notes-container";

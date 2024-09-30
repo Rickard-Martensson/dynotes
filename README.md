@@ -8,12 +8,27 @@ DyNotes is a powerful note-taking application that allows users to organize thei
 ![Alt text](image-1.png)
 ## Features
 
-- Create and manage notes with rich text formatting
-- Organize notes using a flexible tag system
-- Visualize tag relationships with an interactive graph
-- Search notes using text and tag filters
-- Adjust note visibility for privacy control
-- Edit and delete existing notes
+1. **Tag-Based Search**: 
+   - Search notes by selecting one or more tags.
+   - The search respects tag hierarchies, automatically including child tags in the results.
+   - This allows for both broad and narrow searches based on your tag structure.
+
+2. **Full-Text Search**:
+   - Quickly find notes containing specific words or phrases.
+   - Combines with tag-based search for highly targeted queries.
+
+3. **Visibility Levels**:
+   - Each note has a visibility level, allowing for fine-grained access control.
+   - Search results are filtered based on the user's permission level, ensuring sensitive information remains protected.
+
+4. **Efficient Query Execution**:
+   - Utilizes SQLite's full-text search capabilities for fast results even with large numbers of notes.
+   - Implements recursive common table expressions (CTE) to efficiently traverse tag hierarchies.
+
+5. **Dynamic Result Updates**:
+   - Search results update in real-time as you modify your query or select different tags.
+
+This powerful combination allows users to quickly find relevant information across their entire knowledge base, making DyNotes an invaluable tool for organizing and retrieving complex, interconnected ideas.
 
 ## Getting Started
 
@@ -78,3 +93,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+Created by [Rickard](https://www.ric.ke), except for the readme, that was all Chatgpt!

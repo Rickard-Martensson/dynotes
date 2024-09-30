@@ -206,6 +206,7 @@ def search():
     selected_tags = data.get("tags", [])
     search_text = data.get("text", "")
     password = data.get("password", "")
+    sort_criteria = data.get("sortCriteria", "stars-desc")  # Default sorting
 
     visibility_level = 5 if check_password_hash(PASSWORD_HASH, password) else 1
 
@@ -250,6 +251,10 @@ def search():
         params.append(f"%{search_text}%")
 
     query += " GROUP BY n.note_id"
+
+    sort_field, sort_order = sort_criteria.split("-")
+    sort_mapping = {"stars": "n.rating", "date": "n.date", "visibility": "n.visibility"}
+    query += f" ORDER BY {sort_mapping[sort_field]} {'DESC' if sort_order == 'desc' else 'ASC'}"
 
     app.logger.debug(f"Search query: {query}")
     app.logger.debug(f"Search params: {params}")

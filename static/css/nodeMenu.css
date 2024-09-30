@@ -1,0 +1,99 @@
+#nodeMenu {
+    width: 250px;
+    height: 500px;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+#nodeMenu h2,
+#nodeMenu h3 {
+    margin: 10px 0 2px;
+    padding: 0px;
+}
+
+#nodeMenu ul {
+    margin: -20px 0 -20px 0;
+    padding-left: 15px;
+    list-style-type: none;
+}
+
+#nodeMenu li {
+    margin: 2px 0 0 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+#nodeMenu input[type="text"],
+#nodeMenu select {
+    margin: 2px 0;
+    width: calc(100% - 70px);
+    display: inline-block;
+    height: 24px;
+    box-sizing: border-box;
+    padding: 0 2px;
+    /* Reduced horizontal padding */
+}
+
+#nodeMenu select option {
+    padding: 0;
+    line-height: 1.2;
+    /* Reduced line height for options */
+}
+
+#nodeMenu select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background: url("data:image/svg+xml;utf8,<svg fill='black' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/><path d='M0 0h24v24H0z' fill='none'/></svg>") no-repeat right center;
+    background-size: 20px;
+    padding-right: 20px;
+    /* Space for custom arrow */
+}
+
+#nodeMenu select::-ms-expand {
+    display: none;
+    /* Remove default arrow in Internet Explorer */
+}
+
+#nodeMenu button {
+    margin: 2px 0;
+    padding: 2px 6px;
+    width: 65px;
+    height: 24px;
+    vertical-align: top;
+    box-sizing: border-box;
+    font-family: Cascode, Arial, sans-serif;
+}
+
+
+#nodeMenu button.remove {
+    background-color: #e74c3c;
+}
+
+#nodeMenu button.remove:hover {
+    background-color: #c0392b;
+}
+
+.rename-section,
+.add-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    /* margin-bottom: px; */
+    margin: -20px 0 -20px 0;
+}
+
+.rename-section {
+    margin: 0 0 -20px 0;
+}
+
+
+/* .add-section select {
+    flex-grow: 1;
+    margin-right: 5px;
+} */
+
+.add-section button {
+    flex-shrink: 0;
+}

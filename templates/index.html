@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Note-taking App</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/nodeMenu.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/noteForm.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/searchDisplay.css') }}">
+
+    <style>
+        #container {
+            display: flex;
+        }
+
+        #tagGraph {
+            flex: 1;
+        }
+
+        #nodeMenu {
+            width: 250px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Note-taking App</h1>
+
+    <h2>Tag Management</h2>
+    <div id="container">
+        <div id="tagGraph"></div>
+        <div id="nodeMenu">
+            <h3>Node Details</h3>
+            <!-- <input type="text" id="nodeName">
+            <button onclick="tagGraph.renameNode()">Rename</button> -->
+
+            <div class="rename-section">
+                <input type="text" id="nodeName" placeholder="Node name">
+                <button onclick="tagGraph.renameNode()">Rename</button>
+            </div>
+            <h4>Parents</h4>
+            <ul id="nodeParents"></ul>
+            <h4>Children</h4>
+            <ul id="nodeChildren"></ul>
+            <h4>Add Parent</h4>
+            <div class="add-section">
+                <select id="addParent"></select>
+                <button onclick="tagGraph.addParent()">Add</button>
+            </div>
+
+            <h4>Add Child</h4>
+            <div class="add-section">
+                <select id="addChild"></select>
+                <button onclick="tagGraph.addChild()">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <h2>Add Tag</h2>
+    <input type="text" id="tagName" placeholder="Enter tag name">
+    <button onclick="addTag()">Add Tag</button>
+
+    <h2>Add Note</h2>
+    <div>
+        <p>Selected Tags: <span id="selectedNoteTags"></span></p>
+    </div>
+    <div id="addNoteForm">
+        <div class="form-row">
+            <input type="text" id="noteAuthor" placeholder="Author" />
+            <div class="star-rating" id="noteRating">
+                <span class="star" data-value="1">⭐</span>
+                <span class="star" data-value="2">⭐</span>
+                <span class="star" data-value="3">⭐</span>
+                <span class="star" data-value="4">⭐</span>
+                <span class="star" data-value="5">⭐</span>
+            </div>
+            <input type="text" id="noteSource" placeholder="Source" />
+            <div class="visibility-rating" id="noteVisibility">
+                <span class="visibility" data-value="1">🔓</span>
+                <span class="visibility" data-value="2">🔒</span>
+                <span class="visibility" data-value="3">🔐</span>
+                <span class="visibility" data-value="4">🔏</span>
+            </div>
+        </div>
+        <div id="noteTextContainer">
+            <textarea id="noteText" placeholder="Enter your note here (Markdown supported)"></textarea>
+            <div id="notePreview"></div>
+        </div>
+        <button onclick="addNote()">Add Note</button>
+    </div>
+
+    <div id="passwordForm">
+        <input type="password" id="searchPassword" value="1234" placeholder="Enter password for higher visibility">
+        <button onclick="updatePassword()">Update Password</button>
+    </div>
+
+
+    <!-- <textarea id="noteText" placeholder="Enter note text"></textarea>
+    <input type="text" id="noteAuthor" placeholder="Author">
+    <input type="number" id="noteRating" placeholder="Rating">
+    <input type="text" id="noteSource" placeholder="Source">
+    <button onclick="addNote()">Add Note</button> -->
+
+    <h2>Search tNotes</h2>
+    <div>
+        <p>Selected Tags: <span id="selectedSearchTags"></span></p>
+    </div>
+    <input type="text" id="searchText" placeholder="Enter search text">
+    <button onclick="searchNotes()">Search</button>
+
+    <div id="results"></div>
+
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="{{ url_for('static', filename='js/tagGraph.js') }}"></script>
+    <!-- <script>
+        const tagGraph = new TagGraph("tagGraph");
+        tagGraph.initialize();
+    </script> -->
+</body>
+
+</html>

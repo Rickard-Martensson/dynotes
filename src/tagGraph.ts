@@ -36,7 +36,7 @@ class TagGraph {
     private isDragging: boolean = false;
     private holdTimer: number | null = null;
     private isHoldReady: boolean = false;
-
+    private nodeMenu: HTMLElement;
 
     private static readonly COLORS = {
         ARROW: "#2c3e50",
@@ -59,6 +59,7 @@ class TagGraph {
         // BORDER: "#D4C6B3"       // Slightly darker than background for border
         BORDER: "#84817a"       // Slightly darker than background for border
     };
+    private static readonly GRAPH_HEIGHT = 800;
 
     private static readonly NODE_SIZES = [12, 10, 8];  // Sizes for generations 0-4+
 
@@ -72,14 +73,18 @@ class TagGraph {
         // this.container.style.borderRadius = '10px';
         // this.container.style.overflow = 'hidden';
 
+        this.nodeMenu = document.getElementById('nodeMenu')!;
+        document.getElementById('closeNodeMenu')!.addEventListener('click', () => this.hideNodeMenu());
+
+
         this.svg = d3.select(this.container).append("svg")
             .attr("width", "100%")
-            .attr("height", "500px");
+            .attr("height", TagGraph.GRAPH_HEIGHT + "px");
         this.simulation = d3.forceSimulation<Tag>()
             .force("link", d3.forceLink<Tag, Link>().id(d => d.tag_id.toString()).distance(this.getLinkDistance.bind(this)))
             // .force("link", d3.forceLink<Tag, Link>().id(d => d.tag_id.toString()).distance(100))
-            .force("charge", d3.forceManyBody().strength(-300))
-            .force("center", d3.forceCenter(this.container.clientWidth / 2, 250))
+            .force("charge", d3.forceManyBody().strength(-200))
+            .force("center", d3.forceCenter(this.container.clientWidth / 2, TagGraph.GRAPH_HEIGHT / 2))
             .force("collision", d3.forceCollide().radius(20))
             .force("x", d3.forceX(this.container.clientWidth / 2).strength(0.05))
             .force("y", d3.forceY(250).strength(0.05));
@@ -108,10 +113,92 @@ class TagGraph {
             }
         `;
         document.head.appendChild(style);
+        window.addEventListener('resize', () => {
+            requestAnimationFrame(() => {
+                this.updateSimulationForces();
+            });
+        });
+        this.updateSimulationForces();
+
+    }
+
+    updateSimulationForces(): void {
+        const centerX = this.container.clientWidth / 2;
+        const centerY = TagGraph.GRAPH_HEIGHT / 2;
+
+        this.simulation
+            .force("center", d3.forceCenter(centerX, centerY))
+            .force("x", d3.forceX(centerX).strength(0.075))
+            .force("y", d3.forceY(centerY).strength(0.075));
+
+        // Restart the simulation with a higher alpha to make the changes more apparent
+        this.simulation.alpha(0.3).restart();
+    }
+
+
+    showNodeMenu(): void {
+        this.nodeMenu.style.display = 'block';
+        requestAnimationFrame(() => {
+            this.updateSimulationForces();
+        });
+    }
+
+    hideNodeMenu(): void {
+        this.nodeMenu.style.display = 'none';
+        this.lastSelectedNode = null;
+        requestAnimationFrame(() => {
+            this.updateSimulationForces();
+        });
     }
 
     isOrphan(node: Tag): boolean {
         return !this.links.some(link => link.target === node);
+    }
+
+    async deleteTag(tagId: number): Promise<void> {
+        if (!confirm("Are you sure you want to delete this tag? This action cannot be undone.")) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/delete_tag', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tag_id: tagId })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                if (result.success) {
+                    // Remove the tag from the nodes array
+                    this.nodes = this.nodes.filter(node => node.tag_id !== tagId);
+
+                    // Remove any links associated with this tag
+                    this.links = this.links.filter(link => link.source.tag_id !== tagId && link.target.tag_id !== tagId);
+
+                    // Clear the selected node if it was the deleted tag
+                    if (this.lastSelectedNode && this.lastSelectedNode.tag_id === tagId) {
+                        this.lastSelectedNode = null;
+                    }
+
+                    // Remove the tag from selectedNodes if present
+                    this.selectedNodes.delete(this.nodes.find(node => node.tag_id === tagId)!);
+
+                    this.updateGraph();
+                    this.updateNodeMenu();
+                    this.updateSelectedTagsLists();
+                    alert('Tag deleted successfully!');
+                } else {
+                    alert('Failed to delete tag: ' + result.error);
+                }
+            } else {
+                const errorData = await response.json();
+                alert('Failed to delete tag: ' + errorData.error);
+            }
+        } catch (error) {
+            console.error('Error deleting tag:', error);
+            alert('Error deleting tag: ' + error);
+        }
     }
 
     async loadData(): Promise<void> {
@@ -197,6 +284,7 @@ class TagGraph {
     }
 
     drag(): d3.DragBehavior<SVGGElement, Tag, Tag | d3.SubjectPosition> {
+        const timeToWiggle = 750;
         return d3.drag<SVGGElement, Tag>()
             .on("start", (event: d3.D3DragEvent<SVGGElement, Tag, Tag>, d: Tag) => {
                 this.isDragging = false;
@@ -214,9 +302,12 @@ class TagGraph {
                 this.holdTimer = window.setTimeout(() => {
                     this.isHoldReady = true;
                     this.startNodeWiggle(event.sourceEvent.target as Element);
+                    // select node if you hold it for .5 sec
+                    this.lastSelectedNode = d;
+                    this.updateNodeMenu();
 
                     this.freezeAllNodes()
-                }, 500);
+                }, timeToWiggle);
             })
             .on("drag", (event: d3.D3DragEvent<SVGGElement, Tag, Tag>, d: Tag) => {
                 if (!this.isHoldReady) {
@@ -293,11 +384,11 @@ class TagGraph {
             this.updatePointerCounts(node, 1);
         }
         node.visible = true;
-        this.lastSelectedNode = node;
+        // this.lastSelectedNode = node;
         this.updateGraph();
         this.updateSelectedTagsLists();
         this.performSearch();
-        this.updateNodeMenu();
+        // this.updateNodeMenu();
     }
 
     updatePointerCounts(node: Tag, delta: number): void {
@@ -332,8 +423,8 @@ class TagGraph {
 
     updateNodeMenu(): void {
         if (!this.lastSelectedNode) {
-            // document.getElementById('nodeMenu')!.style.display = 'none';
-            document.getElementById('nodeMenu')!.style.display = 'block';
+            document.getElementById('nodeMenu')!.style.display = 'none';
+            // document.getElementById('nodeMenu')!.style.display = 'block';
 
             return;
         }
@@ -386,6 +477,15 @@ class TagGraph {
                 addChildSelect.appendChild(childOption);
             }
         });
+
+        const deleteTagBtn = document.getElementById('deleteTagBtn') as HTMLButtonElement;
+        if (deleteTagBtn) {
+            deleteTagBtn.onclick = () => {
+                if (this.lastSelectedNode) {
+                    this.deleteTag(this.lastSelectedNode.tag_id);
+                }
+            };
+        }
     }
 
     async renameNode(): Promise<void> {
@@ -489,9 +589,9 @@ class TagGraph {
                 (l.source === targetNode && l.target === draggedNode)
             );
             if (existingRelationship) {
-                this.infoText.text(`Release to remove relationship between "${draggedNode.name}" and "${targetNode.name}"`);
+                this.infoText.text(`Release to remove relationship between "${targetNode.name}" and "${draggedNode.name}"`);
             } else {
-                this.infoText.text(`Release to create relationship: "${draggedNode.name}" → "${targetNode.name}"`);
+                this.infoText.text(`Release to create relationship: "${targetNode.name}" → "${draggedNode.name}"`);
             }
         } else {
             this.infoText.text("");
@@ -508,7 +608,7 @@ class TagGraph {
             if (existingRelationship) {
                 await this.removeRelationship(existingRelationship);
             } else {
-                await this.createRelationship(draggedNode, targetNode);
+                await this.createRelationship(targetNode, draggedNode);
             }
         }
         this.draggedNode = null;

@@ -44,6 +44,34 @@ def rename_tag():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route("/delete_tag", methods=["POST"])
+def delete_tag():
+    db = get_db()
+    data = request.json
+    cursor = db.cursor()
+
+    try:
+        # Begin a transaction
+        cursor.execute("BEGIN")
+
+        # Delete the tag
+        cursor.execute("DELETE FROM Tags WHERE tag_id = ?", (data["tag_id"],))
+
+        # Delete relationships where this tag is a parent or child
+        cursor.execute("DELETE FROM TagRelationships WHERE parent_tag_id = ? OR child_tag_id = ?", (data["tag_id"], data["tag_id"]))
+
+        # Delete note-tag associations
+        cursor.execute("DELETE FROM NoteTags WHERE tag_id = ?", (data["tag_id"],))
+
+        # Commit the transaction
+        db.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        db.rollback()
+        app.logger.error(f"Error deleting tag: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/remove_tag_relationship", methods=["POST"])
 def remove_tag_relationship():
     db = get_db()

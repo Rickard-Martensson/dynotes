@@ -35,8 +35,15 @@
     <h2>Tag Management</h2>
     <div id="container">
         <div id="tagGraph"></div>
+
         <div id="nodeMenu">
-            <h3>Node Details</h3>
+            <div class="header-section">
+                <div class="title-container">
+                    <h3>Node Details</h3>
+                    <button id="deleteTagBtn" class="red">Delete</button>
+                </div>
+                <button id="closeNodeMenu" class="close-btn">&times;</button>
+            </div>
             <!-- <input type="text" id="nodeName">
             <button onclick="tagGraph.renameNode()">Rename</button> -->
 
@@ -140,8 +147,18 @@
     <div>
         <p>Selected Tags: <span id="selectedSearchTags"></span></p>
     </div>
-    <input type="text" id="searchText" placeholder="Enter search text">
-    <button onclick="searchNotes()">Search</button>
+    <div class="search-container">
+        <input type="text" id="searchText" placeholder="Enter search text">
+        <select id="sortCriteria">
+            <option value="stars-desc" selected>Stars (High to Low)</option>
+            <option value="stars-asc">Stars (Low to High)</option>
+            <option value="date-desc">Date (Newest First)</option>
+            <option value="date-asc">Date (Oldest First)</option>
+            <option value="visibility-desc">Visibility (High to Low)</option>
+            <option value="visibility-asc">Visibility (Low to High)</option>
+        </select>
+        <button onclick="searchNotes()">Search</button>
+    </div>
 
     <div id="results"></div>
 

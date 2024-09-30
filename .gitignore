@@ -1,7 +1,11 @@
 /migrate_db.py
 /notes.db
 /package-lock.json
-/package.json
+/package.json   
 /node_modules/
+/old_notes/
 *.db
-
+tags.md
+wsgi.py
+migrate_old_notes.py
+tagGraph.js

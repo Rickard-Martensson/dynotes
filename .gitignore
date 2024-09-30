@@ -5,7 +5,6 @@
 /node_modules/
 /old_notes/
 *.db
-!notes.db
 tags.md
 wsgi.py
 migrate_old_notes.py

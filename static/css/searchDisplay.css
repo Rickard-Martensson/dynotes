@@ -36,6 +36,28 @@
     color: #f1c40f;
 }
 
+.note-rating-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.note-rating,
+.note-visibility {
+    display: inline-flex;
+    align-items: center;
+}
+
+.edit-note-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1em;
+    padding: 0;
+    display: flex;
+    align-items: center;
+}
+
 .note-tags {
     color: #7f8c8d;
     margin-top: 2px;

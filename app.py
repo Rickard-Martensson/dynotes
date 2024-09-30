@@ -116,6 +116,60 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/edit_note", methods=["POST"])
+def edit_note():
+    db = get_db()
+    data = request.json
+    cursor = db.cursor()
+
+    try:
+        cursor.execute(
+            """
+        UPDATE Notes
+        SET text = ?, author = ?, rating = ?, source = ?, visibility = ?
+        WHERE note_id = ?
+        """,
+            (
+                data["text"],
+                data["author"],
+                data["rating"],
+                data["source"],
+                data["visibility"],
+                data["noteId"],
+            ),
+        )
+
+        # You'll need to implement tag editing here if you want to allow that
+
+        db.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        db.rollback()
+        app.logger.error(f"Error editing note: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/delete_note", methods=["POST"])
+def delete_note():
+    db = get_db()
+    data = request.json
+    cursor = db.cursor()
+
+    try:
+        # Delete the note
+        cursor.execute("DELETE FROM Notes WHERE note_id = ?", (data["noteId"],))
+
+        # Delete associated tag relationships
+        cursor.execute("DELETE FROM NoteTags WHERE note_id = ?", (data["noteId"],))
+
+        db.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        db.rollback()
+        app.logger.error(f"Error deleting note: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/search", methods=["POST"])
 def search():
     db = get_db()

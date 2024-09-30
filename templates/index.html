@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/nodeMenu.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/noteForm.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/searchDisplay.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modal.css') }}">
 
     <style>
         #container {
@@ -92,6 +93,35 @@
             <div id="notePreview"></div>
         </div>
         <button onclick="addNote()">Add Note</button>
+    </div>
+    <!-- Add this right after the #addNoteForm div -->
+    <div id="editNoteModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Edit Note</h2>
+            <div id="editNoteForm">
+                <textarea id="editNoteText"></textarea>
+                <input type="text" id="editNoteAuthor" placeholder="Author">
+                <input type="text" id="editNoteSource" placeholder="Source">
+                <div id="editNoteRating" class="star-rating">
+                    <span class="star" data-value="1">⭐</span>
+                    <span class="star" data-value="2">⭐</span>
+                    <span class="star" data-value="3">⭐</span>
+                    <span class="star" data-value="4">⭐</span>
+                    <span class="star" data-value="5">⭐</span>
+                </div>
+                <div id="editNoteVisibility" class="visibility-rating">
+                    <span class="visibility" data-value="1">🔓</span>
+                    <span class="visibility" data-value="2">🔒</span>
+                    <span class="visibility" data-value="3">🔐</span>
+                    <span class="visibility" data-value="4">🔏</span>
+                </div>
+                <div id="editNoteTags"></div>
+                <button id="saveEditNoteBtn" class="blue">Save Changes</button>
+                <button id="revertEditNoteBtn" class="turq">Revert Changes</button>
+                <button id="deleteNoteBtn" class="red">Delete Note</button>
+            </div>
+        </div>
     </div>
 
     <div id="passwordForm">

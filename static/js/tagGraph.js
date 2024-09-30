@@ -584,30 +584,6 @@ async function addTag() {
         console.error('Failed to add tag');
     }
 }
-async function addNote2() {
-    const text = document.getElementById("noteText").value;
-    const author = document.getElementById("noteAuthor").value;
-    const rating = document.getElementById("noteRating").value;
-    const source = document.getElementById("noteSource").value;
-    const tags = Array.from(window.tagGraph.selectedNodes).map((n) => n.tag_id);
-    const response = await fetch('/add_note', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, author, rating, source, tags })
-    });
-    if (response.ok) {
-        document.getElementById("noteText").value = "";
-        document.getElementById("noteAuthor").value = "";
-        document.getElementById("noteRating").value = "";
-        document.getElementById("noteSource").value = "";
-        window.tagGraph.selectedNodes.clear();
-        window.tagGraph.updateGraph();
-        window.tagGraph.updateSelectedTagsLists();
-    }
-    else {
-        console.error('Failed to add note');
-    }
-}
 async function searchNotes() {
     const searchText = document.getElementById("searchText").value;
     const password = document.getElementById("searchPassword").value;
@@ -653,13 +629,25 @@ function displaySearchResults(results) {
         textContainer.textContent = note.text;
         const metaContainer = document.createElement("div");
         metaContainer.className = "note-meta";
+        const ratingAndControlsElement = document.createElement("div");
+        ratingAndControlsElement.className = "note-rating-controls";
         const ratingElement = document.createElement("span");
         ratingElement.className = "note-rating";
         ratingElement.textContent = `${note.rating}⭐`;
+        const visibilityIcon = document.createElement("span");
+        visibilityIcon.className = "note-visibility";
+        visibilityIcon.textContent = getVisibilityEmoji(note.visibility);
+        const editButton = document.createElement("button");
+        editButton.className = "edit-note-btn";
+        editButton.innerHTML = "✏️"; // Pencil emoji
+        editButton.onclick = () => openEditNoteModal(note);
+        ratingAndControlsElement.appendChild(ratingElement);
+        ratingAndControlsElement.appendChild(visibilityIcon);
+        ratingAndControlsElement.appendChild(editButton);
         const tagsElement = document.createElement("div");
         tagsElement.className = "note-tags";
         tagsElement.textContent = `Tags: ${note.tags}`;
-        metaContainer.appendChild(ratingElement);
+        metaContainer.appendChild(ratingAndControlsElement);
         metaContainer.appendChild(tagsElement);
         noteElement.appendChild(textContainer);
         noteElement.appendChild(metaContainer);
@@ -667,48 +655,148 @@ function displaySearchResults(results) {
     });
     resultsContainer.appendChild(notesContainer);
 }
-function displaySearchResults4(results) {
-    const resultsContainer = document.getElementById("results");
-    resultsContainer.innerHTML = "";
-    const notesContainer = document.createElement("div");
-    notesContainer.className = "notes-container";
-    results.forEach(note => {
-        const noteElement = document.createElement("div");
-        noteElement.className = "note";
-        const textContainer = document.createElement("div");
-        textContainer.className = "note-text";
-        textContainer.textContent = note.text;
-        const metaContainer = document.createElement("div");
-        metaContainer.className = "note-meta";
-        const ratingElement = document.createElement("span");
-        ratingElement.className = "note-rating";
-        ratingElement.textContent = `${note.rating}⭐`; // Display rating as number followed by a single star
-        const tagsElement = document.createElement("div");
-        tagsElement.className = "note-tags";
-        tagsElement.textContent = "Tags: Placeholder";
-        metaContainer.appendChild(ratingElement);
-        metaContainer.appendChild(tagsElement);
-        noteElement.appendChild(textContainer);
-        noteElement.appendChild(metaContainer);
-        notesContainer.appendChild(noteElement);
-    });
-    resultsContainer.appendChild(notesContainer);
+function getVisibilityEmoji(visibility) {
+    switch (visibility) {
+        case 1: return "🔓";
+        case 2: return "🔒";
+        case 3: return "🔐";
+        case 4: return "🔏";
+        default: return "🔓";
+    }
 }
-function displaySearchResults2(results) {
-    const resultsContainer = document.getElementById("results");
-    resultsContainer.innerHTML = "";
-    results.forEach(note => {
-        const noteElement = document.createElement("div");
-        noteElement.className = "note";
-        noteElement.innerHTML = `
-        <p><strong>Text:</strong> ${note.text}</p>
-        <p><strong>Author:</strong> ${note.author}</p>
-        <p><strong>Date:</strong> ${new Date(note.date * 1000).toLocaleString()}</p>
-        <p><strong>Rating:</strong> ${note.rating}</p>
-        <p><strong>Source:</strong> ${note.source}</p>
-      `;
-        resultsContainer.appendChild(noteElement);
-    });
+// Add these functions at the end of the file
+// Modify the openEditNoteModal function
+function openEditNoteModal(note) {
+    const modal = document.getElementById('editNoteModal');
+    const closeBtn = modal.querySelector('.close');
+    const saveBtn = document.getElementById('saveEditNoteBtn');
+    const revertBtn = document.getElementById('revertEditNoteBtn');
+    const deleteBtn = document.getElementById('deleteNoteBtn');
+    // Store the original note data
+    const originalNoteData = { ...note };
+    function populateForm(data) {
+        document.getElementById('editNoteText').value = data.text;
+        document.getElementById('editNoteAuthor').value = data.author;
+        document.getElementById('editNoteSource').value = data.source;
+        // Set rating
+        const ratingStars = document.querySelectorAll("#editNoteRating .star");
+        ratingStars.forEach((star, index) => {
+            star.classList.toggle('active', index < data.rating);
+        });
+        // Set visibility
+        const visibilityIcons = document.querySelectorAll("#editNoteVisibility .visibility");
+        visibilityIcons.forEach((vis, index) => {
+            vis.classList.toggle('active', index < data.visibility);
+        });
+        // Set tags
+        const editNoteTags = document.getElementById('editNoteTags');
+        editNoteTags.textContent = `Tags: ${data.tags}`;
+        // Add event listeners for rating stars
+        ratingStars.forEach((star) => {
+            star.addEventListener('click', (event) => {
+                const clickedStar = event.currentTarget;
+                const value = parseInt(clickedStar.getAttribute('data-value') || '1', 10);
+                ratingStars.forEach((s, i) => {
+                    s.classList.toggle('active', i < value);
+                });
+            });
+        });
+        // Add event listeners for visibility icons
+        visibilityIcons.forEach((icon) => {
+            icon.addEventListener('click', (event) => {
+                const clickedIcon = event.currentTarget;
+                const value = parseInt(clickedIcon.getAttribute('data-value') || '1', 10);
+                visibilityIcons.forEach((i, index) => {
+                    i.classList.toggle('active', index < value);
+                });
+            });
+        });
+    }
+    populateForm(note);
+    modal.style.display = "block";
+    closeBtn.onclick = () => {
+        modal.style.display = "none";
+    };
+    saveBtn.onclick = () => {
+        saveEditedNote(note.note_id);
+    };
+    revertBtn.onclick = () => {
+        populateForm(originalNoteData);
+    };
+    deleteBtn.onclick = () => {
+        if (confirm("Are you sure you want to delete this note? This action cannot be undone.")) {
+            deleteNote(note.note_id);
+        }
+    };
+    window.onclick = (event) => {
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    };
+}
+async function deleteNote(noteId) {
+    try {
+        const response = await fetch('/delete_note', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ noteId })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            if (result.success) {
+                alert('Note deleted successfully!');
+                document.getElementById('editNoteModal').style.display = "none";
+                // Refresh the search results
+                searchNotes();
+            }
+            else {
+                alert('Failed to delete note: ' + result.error);
+            }
+        }
+        else {
+            const errorData = await response.json();
+            alert('Failed to delete note: ' + errorData.error);
+        }
+    }
+    catch (error) {
+        console.error('Error deleting note:', error);
+        alert('Error deleting note: ' + error);
+    }
+}
+async function saveEditedNote(noteId) {
+    const text = document.getElementById("editNoteText").value;
+    const author = document.getElementById("editNoteAuthor").value;
+    const source = document.getElementById("editNoteSource").value;
+    const rating = document.querySelectorAll("#editNoteRating .star.active").length;
+    const visibility = document.querySelectorAll("#editNoteVisibility .visibility.active").length;
+    // You'll need to implement a way to edit tags as well
+    try {
+        const response = await fetch('/edit_note', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ noteId, text, author, rating, source, visibility })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            if (result.success) {
+                alert('Note updated successfully!');
+                document.getElementById('editNoteModal').style.display = "none";
+                // Refresh the search results
+                searchNotes();
+            }
+            else {
+                alert('Failed to update note: ' + result.error);
+            }
+        }
+        else {
+            const errorData = await response.json();
+            alert('Failed to update note: ' + errorData.error);
+        }
+    }
+    catch (error) {
+        console.error('Error updating note:', error);
+        alert('Error updating note: ' + error);
+    }
 }
 function initRating(containerId) {
     const container = document.getElementById(containerId);
@@ -875,31 +963,6 @@ async function addNote() {
     catch (error) {
         console.error('Error adding note:', error);
         alert('Error adding note: ' + error);
-    }
-}
-// Update the addNote function
-async function addNote3() {
-    const text = document.getElementById("noteText").value;
-    const author = document.getElementById("noteAuthor").value;
-    const ratingElement = document.querySelector("#noteRating .star.active:last-of-type");
-    const rating = ratingElement ? parseInt(ratingElement.getAttribute('data-value') || '0', 10) : 0;
-    const source = document.getElementById("noteSource").value;
-    const visibilityElement = document.querySelector("#noteVisibility .visibility.active:last-of-type");
-    const visibility = visibilityElement ? parseInt(visibilityElement.getAttribute('data-value') || '0', 10) : 0;
-    const tags = Array.from(window.tagGraph.selectedNodes).map((n) => n.tag_id);
-    const response = await fetch('/add_note', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, author, rating, source, visibility, tags })
-    });
-    if (response.ok) {
-        clearFormData(); // Clear only the text and localStorage
-        window.tagGraph.selectedNodes.clear();
-        window.tagGraph.updateGraph();
-        window.tagGraph.updateSelectedTagsLists();
-    }
-    else {
-        console.error('Failed to add note');
     }
 }
 // Initialize the graph when the DOM is ready

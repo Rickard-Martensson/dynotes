@@ -67,10 +67,37 @@ button {
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.3s;
+
+    font-family: Cascode, monospace;
 }
 
 button:hover {
     background-color: var(--button-hover-color);
+}
+
+
+button.red {
+    background-color: #e74c3c;
+}
+
+button.red:hover {
+    background-color: #c0392b;
+}
+
+button.turq {
+    background-color: #1abc9c;
+}
+
+button.turq:hover {
+    background-color: #16a085;
+}
+
+button.blue {
+    background-color: #3498db;
+}
+
+button.blue:hover {
+    background-color: #2980b9;
 }
 
 /* #results .note {

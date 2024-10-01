@@ -1157,6 +1157,7 @@ class MMRComparison {
     notes;
     toastTimeout = null;
     isToastVisible = false;
+    pendingComparison = false;
     constructor() {
         this.toast = document.getElementById('mmrToast');
         this.notes = document.querySelectorAll('.mmr-note');
@@ -1289,6 +1290,8 @@ class MMRComparison {
         this.toast.classList.remove('fade-out');
         this.toast.classList.add('fade-in');
         this.isToastVisible = true;
+        // Set a flag to indicate a pending comparison
+        this.pendingComparison = true;
         this.toastTimeout = window.setTimeout(() => {
             this.hideToastAndContinue();
         }, 2000);
@@ -1306,7 +1309,10 @@ class MMRComparison {
         setTimeout(() => {
             this.toast.style.display = 'none';
             this.notes.forEach(note => note.classList.remove('darken'));
-            this.startComparison();
+            if (this.pendingComparison) {
+                this.pendingComparison = false;
+                this.startComparison();
+            }
         }, 300);
     }
     clearComparison() {

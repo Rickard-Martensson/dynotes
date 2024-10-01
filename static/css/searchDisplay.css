@@ -179,9 +179,27 @@
 
 .note-text ul,
 .note-text ol {
-    margin-left: 0em;
-    margin-top: -0.5em;
-    margin-bottom: 0em;
+    margin: 0.1em 0 0.1em 1.2em;
+    padding: 0;
+}
+
+.note-text li {
+    margin-left: 1.2em;
+    padding: 0;
+    line-height: 1;
+}
+
+
+.note-text p {
+    margin: 0.1em 0;
+}
+
+.note-text ul {
+    list-style-position: outside;
+}
+
+.note-text ol {
+    list-style-position: outside;
 }
 
 .note-text strong {

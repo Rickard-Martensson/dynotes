@@ -775,14 +775,11 @@ function getVisibilityEmoji(visibility) {
     }
 }
 function wrapTags(tags, maxLineLength = 30) {
-    console.log("Input tags:", tags);
-    console.log("Max line length:", maxLineLength);
     const tagArray = tags.split(',');
     let lines = [];
     let currentLine = '';
     tagArray.forEach(tag => {
         tag = tag.trim();
-        console.log("Processing tag:", tag);
         if (currentLine.length === 0) {
             currentLine = tag;
         }
@@ -793,12 +790,10 @@ function wrapTags(tags, maxLineLength = 30) {
             lines.push(currentLine);
             currentLine = tag;
         }
-        console.log("Current line:", currentLine);
     });
     if (currentLine.length > 0) {
         lines.push(currentLine);
     }
-    console.log("Resulting lines:", lines);
     return lines;
 }
 function parseMarkdown(text) {
@@ -811,12 +806,15 @@ function parseMarkdown(text) {
     text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
     text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
     // Lists
-    text = text.replace(/^-\s+(.+)$/gm, '<ul><li>$1</li></ul>');
-    text = text.replace(/<\/ul><ul>/g, '');
+    text = text.replace(/(?:^|\n)(?:- (.+)(?:\n|$))+/gm, (match) => {
+        const items = match.trim().split('\n');
+        const listItems = items.map(item => `<li>${item.substring(2)}</li>`).join('');
+        return `<ul>${listItems}</ul>`;
+    });
     // Line thing or whatever
     text = text.replace(/^----+$/gm, '<hr>');
-    // Preserve line breaks
-    text = text.replace(/\n/g, '<br>');
+    // Preserve line breaks (but not within lists)
+    text = text.replace(/(?<!\>)\n(?!\<)/g, '<br>');
     return text;
 }
 // Add these functions at the end of the file

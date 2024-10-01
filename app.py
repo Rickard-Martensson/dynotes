@@ -151,6 +151,8 @@ def edit_note():
     cursor = db.cursor()
 
     try:
+        cursor.execute("BEGIN")
+
         cursor.execute(
             """
         UPDATE Notes
@@ -167,13 +169,125 @@ def edit_note():
             ),
         )
 
-        # You'll need to implement tag editing here if you want to allow that
+        # Delete existing tag associations
+        cursor.execute("DELETE FROM NoteTags WHERE note_id = ?", (data["noteId"],))
+
+        # Add new tag associations
+        for tag_id in data["tags"]:
+            cursor.execute("INSERT INTO NoteTags (note_id, tag_id) VALUES (?, ?)", (data["noteId"], tag_id))
 
         db.commit()
         return jsonify({"success": True})
     except Exception as e:
         db.rollback()
         app.logger.error(f"Error editing note: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/get_mmr_notes", methods=["POST"])
+def get_mmr_notes():
+    db = get_db()
+    data = request.json
+    selected_tags = data.get("tags", [])
+    password = data.get("password", "")
+
+    visibility_level = 5 if check_password_hash(PASSWORD_HASH, password) else 1
+
+    query = """
+    WITH RECURSIVE
+    tag_hierarchy(root_id, descendant_id) AS (
+        SELECT tag_id, tag_id FROM Tags WHERE tag_id IN ({})
+        UNION
+        SELECT th.root_id, tr.child_tag_id
+        FROM tag_hierarchy th
+        JOIN TagRelationships tr ON th.descendant_id = tr.parent_tag_id
+    ),
+    matching_notes AS (
+        SELECT n.note_id
+        FROM Notes n
+        JOIN NoteTags nt ON n.note_id = nt.note_id
+        JOIN tag_hierarchy th ON nt.tag_id = th.descendant_id
+        GROUP BY n.note_id
+        HAVING COUNT(DISTINCT th.root_id) = ?
+    )
+    SELECT n.note_id, n.text, n.author, n.date, n.rating, n.source, n.visibility, n.mmr, n.mmr_matches,
+           GROUP_CONCAT(DISTINCT t.name) as tags
+    FROM Notes n
+    JOIN matching_notes mn ON n.note_id = mn.note_id
+    JOIN NoteTags nt ON n.note_id = nt.note_id
+    JOIN Tags t ON nt.tag_id = t.tag_id
+    WHERE n.visibility <= ?
+    GROUP BY n.note_id
+    ORDER BY RANDOM()
+    LIMIT 2
+    """
+
+    params = []
+    if selected_tags:
+        tag_placeholders = ",".join("?" for _ in selected_tags)
+        params.extend(selected_tags)
+    else:
+        tag_placeholders = "SELECT tag_id FROM Tags"
+
+    query = query.format(tag_placeholders)
+    params.extend([len(selected_tags), visibility_level])
+
+    cursor = db.execute(query, params)
+    results = cursor.fetchall()
+
+    return jsonify([dict(row) for row in results])
+
+
+@app.route("/update_mmr", methods=["POST"])
+def update_mmr():
+    db = get_db()
+    data = request.json
+    winner_id = data.get("winner_id")
+    loser_id = data.get("loser_id")
+
+    try:
+        cursor = db.cursor()
+
+        # Get current MMR values and match counts
+        cursor.execute("SELECT note_id, mmr, mmr_matches FROM Notes WHERE note_id IN (?, ?)", (winner_id, loser_id))
+        note_data = {row["note_id"]: row for row in cursor.fetchall()}
+
+        winner_data = note_data[winner_id]
+        loser_data = note_data[loser_id]
+
+        # Calculate K-factor (higher for notes with fewer matches)
+        def calculate_k_factor(matches):
+            if matches < 10:
+                return 32
+            elif matches < 20:
+                return 24
+            else:
+                return 16
+
+        winner_k = calculate_k_factor(winner_data["mmr_matches"])
+        loser_k = calculate_k_factor(loser_data["mmr_matches"])
+
+        # Calculate expected scores
+        expected_winner = 1 / (1 + 10 ** ((loser_data["mmr"] - winner_data["mmr"]) / 400))
+        expected_loser = 1 - expected_winner
+
+        # Calculate MMR changes
+        winner_change = int(winner_k * (1 - expected_winner))
+        loser_change = int(loser_k * (0 - expected_loser))
+
+        # Ensure minimum change of 1
+        winner_change = max(1, winner_change)
+        loser_change = min(-1, loser_change)
+
+        # Update MMR values
+        cursor.execute("UPDATE Notes SET mmr = mmr + ?, mmr_matches = mmr_matches + 1 WHERE note_id = ?", (winner_change, winner_id))
+        cursor.execute("UPDATE Notes SET mmr = mmr + ?, mmr_matches = mmr_matches + 1 WHERE note_id = ?", (loser_change, loser_id))
+
+        db.commit()
+        return jsonify({"success": True, "winner_change": winner_change, "loser_change": loser_change, "winner_id": winner_id, "loser_id": loser_id})
+    except Exception as e:
+        db.rollback()
+        app.logger.error(f"Error in update_mmr: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -227,8 +341,9 @@ def search():
         GROUP BY n.note_id
         HAVING COUNT(DISTINCT th.root_id) = ?
     )
-    SELECT n.note_id, n.text, n.author, n.date, n.rating, n.source, n.visibility,
+    SELECT n.note_id, n.text, n.author, n.date, n.rating, n.source, n.visibility, n.mmr, n.mmr_matches,
            GROUP_CONCAT(DISTINCT t.name) as tags
+
     FROM Notes n
     JOIN matching_notes mn ON n.note_id = mn.note_id
     JOIN NoteTags nt ON n.note_id = nt.note_id
@@ -302,9 +417,6 @@ def add_note():
         db.rollback()
         app.logger.error(f"Error adding note: {str(e)}")  # Add this line for debugging
         return jsonify({"success": False, "error": str(e)}), 500
-
-
-# ... (rest of the code remains the same)
 
 
 if __name__ == "__main__":

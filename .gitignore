@@ -12,3 +12,4 @@ tagGraph.js
 *.ttf
 *.otf
 dontreadme.md
+migrate_mmr.py

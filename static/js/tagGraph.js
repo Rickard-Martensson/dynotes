@@ -102,12 +102,6 @@ class TagGraph {
         // Restart the simulation with a higher alpha to make the changes more apparent
         this.simulation.alpha(0.3).restart();
     }
-    showNodeMenu() {
-        this.nodeMenu.style.display = 'block';
-        requestAnimationFrame(() => {
-            this.updateSimulationForces();
-        });
-    }
     hideNodeMenu() {
         this.nodeMenu.style.display = 'none';
         this.lastSelectedNode = null;
@@ -417,6 +411,9 @@ class TagGraph {
                 }
             };
         }
+        requestAnimationFrame(() => {
+            this.updateSimulationForces();
+        });
     }
     async renameNode() {
         const newName = document.getElementById('nodeName').value;
@@ -594,7 +591,7 @@ class TagGraph {
         const selectedTags = Array.from(this.selectedNodes).map(n => n.name);
         const uniqueSelectedTags = [...new Set(selectedTags)].join(", ");
         document.getElementById("selectedNoteTags").textContent = uniqueSelectedTags;
-        document.getElementById("selectedSearchTags").textContent = uniqueSelectedTags;
+        // document.getElementById("selectedSearchTags")!.textContent = uniqueSelectedTags;
     }
     performSearch() {
         const searchText = document.getElementById("searchText").value;
@@ -795,7 +792,36 @@ function openEditNoteModal(note) {
         });
         // Set tags
         const editNoteTags = document.getElementById('editNoteTags');
-        editNoteTags.textContent = `Tags: ${data.tags}`;
+        editNoteTags.innerHTML = ''; // Clear existing tags
+        // Create a new div for tag text display
+        const tagTextDiv = document.createElement('div');
+        tagTextDiv.id = 'editNoteTagText';
+        editNoteTags.appendChild(tagTextDiv);
+        // Create a new div for tag selection
+        const tagSelectionDiv = document.createElement('div');
+        tagSelectionDiv.id = 'editNoteTagSelection';
+        editNoteTags.appendChild(tagSelectionDiv);
+        // Function to update tag text
+        function updateTagText() {
+            const selectedTags = Array.from(document.querySelectorAll('#editNoteTagSelection input:checked'))
+                .map(checkbox => checkbox.nextSibling?.textContent || '')
+                .filter(Boolean);
+            tagTextDiv.textContent = `Tags: ${selectedTags.join(', ')}`;
+        }
+        // Add all available tags as checkboxes
+        window.tagGraph.nodes.forEach((tag) => {
+            const tagLabel = document.createElement('label');
+            const tagCheckbox = document.createElement('input');
+            tagCheckbox.type = 'checkbox';
+            tagCheckbox.value = tag.tag_id.toString();
+            tagCheckbox.checked = data.tags.includes(tag.name);
+            tagCheckbox.addEventListener('change', updateTagText);
+            tagLabel.appendChild(tagCheckbox);
+            tagLabel.appendChild(document.createTextNode(tag.name));
+            tagSelectionDiv.appendChild(tagLabel);
+        });
+        // Initial update of tag text
+        updateTagText();
         // Add event listeners for rating stars
         ratingStars.forEach((star) => {
             star.addEventListener('click', (event) => {
@@ -874,12 +900,14 @@ async function saveEditedNote(noteId) {
     const source = document.getElementById("editNoteSource").value;
     const rating = document.querySelectorAll("#editNoteRating .star.active").length;
     const visibility = document.querySelectorAll("#editNoteVisibility .visibility.active").length;
-    // You'll need to implement a way to edit tags as well
+    // Get selected tags with correct type assertion
+    const selectedTags = Array.from(document.querySelectorAll('#editNoteTagSelection input[type="checkbox"]:checked'))
+        .map((checkbox) => parseInt(checkbox.value, 10));
     try {
         const response = await fetch('/edit_note', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ noteId, text, author, rating, source, visibility })
+            body: JSON.stringify({ noteId, text, author, rating, source, visibility, tags: selectedTags })
         });
         if (response.ok) {
             const result = await response.json();
@@ -924,7 +952,7 @@ function initRating(containerId) {
 // Initialize star ratings
 initRating('noteRating');
 initRating('noteVisibility');
-// Function to convert markdown to HTML
+// Make sure to include or update the markdownToHtml function if it's not already present
 function markdownToHtml(markdown) {
     return markdown
         .replace(/^(#{1,6})\s+(.+)$/gm, (match, hashes, content) => {
@@ -1070,8 +1098,217 @@ async function addNote() {
         alert('Error adding note: ' + error);
     }
 }
+let currentMMRNotes = [];
+let areRatingsVisible = false;
+let isComparisonInProgress = false;
+class MMRComparison {
+    toast;
+    notes;
+    toastTimeout = null;
+    isToastVisible = false;
+    constructor() {
+        this.toast = document.getElementById('mmrToast');
+        this.notes = document.querySelectorAll('.mmr-note');
+        this.initializeEventListeners();
+    }
+    initializeEventListeners() {
+        const startMMRComparisonBtn = document.getElementById('startMMRComparison');
+        const mmrModal = document.getElementById('mmrModal');
+        const closeMMRModal = mmrModal?.querySelector('.close');
+        const toggleMMRRatingsBtn = document.getElementById('toggleMMRRatings');
+        const skipMMRComparisonBtn = document.getElementById('skipMMRComparison');
+        startMMRComparisonBtn?.addEventListener('click', this.startComparison.bind(this));
+        closeMMRModal?.addEventListener('click', () => {
+            if (mmrModal)
+                mmrModal.style.display = 'none';
+        });
+        toggleMMRRatingsBtn?.addEventListener('click', this.toggleRatings.bind(this));
+        skipMMRComparisonBtn?.addEventListener('click', this.startComparison.bind(this));
+        document.querySelectorAll('.mmr-note').forEach((noteElement, index) => {
+            noteElement.addEventListener('click', () => this.updateMMR(index));
+        });
+        window.addEventListener('click', (event) => {
+            if (event.target === mmrModal && mmrModal != null) {
+                mmrModal.style.display = 'none';
+            }
+        });
+        // Add a global click listener for managing toast visibility
+        document.addEventListener('click', this.handleGlobalClick.bind(this));
+    }
+    handleGlobalClick(event) {
+        if (this.isToastVisible && !this.toast.contains(event.target)) {
+            this.hideToastAndContinue();
+        }
+    }
+    startComparison() {
+        if (isComparisonInProgress)
+            return;
+        isComparisonInProgress = true;
+        this.clearComparison();
+        const tags = Array.from(window.tagGraph.selectedNodes).map((n) => n.tag_id);
+        const password = document.getElementById("searchPassword").value;
+        fetch('/get_mmr_notes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tags, password })
+        })
+            .then(response => response.json())
+            .then(notes => {
+            if (notes.length === 2) {
+                currentMMRNotes = notes;
+                this.displayNotes(notes);
+                document.getElementById('mmrModal').style.display = 'block';
+            }
+            else {
+                alert('Not enough notes found for comparison. Try selecting different tags.');
+            }
+            isComparisonInProgress = false;
+        })
+            .catch(error => {
+            console.error('Error fetching MMR notes:', error);
+            isComparisonInProgress = false;
+        });
+    }
+    displayNotes(notes) {
+        notes.forEach((note, index) => {
+            const noteElement = document.getElementById(`mmrNote${index + 1}`);
+            if (noteElement) {
+                noteElement.querySelector('.mmr-note-text').textContent = note.text;
+                noteElement.querySelector('.mmr-note-meta').textContent = `Author: ${note.author}, Source: ${note.source}, Visibility: ${getVisibilityEmoji(note.visibility)}`;
+                noteElement.querySelector('.mmr-note-tags').textContent = `Tags: ${note.tags}`;
+                const ratingElement = noteElement.querySelector('.mmr-note-rating');
+                ratingElement.textContent = `Rating: ${'⭐'.repeat(note.rating)}`;
+                ratingElement.style.display = areRatingsVisible ? 'block' : 'none';
+            }
+        });
+    }
+    updateMMR(winnerIndex) {
+        if (isComparisonInProgress)
+            return;
+        isComparisonInProgress = true;
+        const winnerId = currentMMRNotes[winnerIndex].note_id;
+        const loserId = currentMMRNotes[1 - winnerIndex].note_id;
+        fetch('/update_mmr', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ winner_id: winnerId, loser_id: loserId })
+        })
+            .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+            .then(result => {
+            if (result.success) {
+                this.showComparisonResult(winnerIndex, result.winner_change, result.loser_change, result.winner_id, result.loser_id);
+            }
+            else {
+                console.error('Failed to update MMR:', result.error);
+                alert('Failed to update MMR. Please try again.');
+            }
+            isComparisonInProgress = false;
+        })
+            .catch(error => {
+            console.error('Error updating MMR:', error);
+            alert('An error occurred while updating MMR. Please try again.');
+            isComparisonInProgress = false;
+        });
+    }
+    showComparisonResult(winnerIndex, winnerChange, loserChange, winnerId, loserId) {
+        if (this.toastTimeout !== null) {
+            clearTimeout(this.toastTimeout);
+        }
+        this.notes.forEach(note => note.classList.add('darken'));
+        const toastNotes = this.toast.querySelectorAll('.mmr-toast-note');
+        currentMMRNotes.forEach((note, index) => {
+            const toastNote = toastNotes[index];
+            const isWinner = note.note_id === winnerId;
+            const change = isWinner ? winnerChange : loserChange;
+            toastNote.querySelector('p').textContent = `Note ${index + 1} (${isWinner ? 'Winner' : 'Loser'})`;
+            toastNote.querySelector('.mmr-toast-rating').textContent = `Rating: ${'⭐'.repeat(note.rating)}`;
+            toastNote.querySelector('.mmr-toast-mmr').innerHTML = `
+                MMR: ${note.mmr} 
+                <span class="change ${change >= 0 ? 'positive' : 'negative'}">
+                    (${change >= 0 ? '+' : ''}${change})
+                </span>
+            `;
+        });
+        this.toast.style.display = 'block';
+        this.toast.classList.remove('fade-out');
+        this.toast.classList.add('fade-in');
+        this.isToastVisible = true;
+        this.toastTimeout = window.setTimeout(() => {
+            this.hideToastAndContinue();
+        }, 2000);
+    }
+    hideToastAndContinue() {
+        if (!this.isToastVisible)
+            return;
+        if (this.toastTimeout !== null) {
+            clearTimeout(this.toastTimeout);
+            this.toastTimeout = null;
+        }
+        this.isToastVisible = false;
+        this.toast.classList.remove('fade-in');
+        this.toast.classList.add('fade-out');
+        setTimeout(() => {
+            this.toast.style.display = 'none';
+            this.notes.forEach(note => note.classList.remove('darken'));
+            this.startComparison();
+        }, 300);
+    }
+    clearComparison() {
+        this.toast.style.display = 'none';
+        this.toast.classList.remove('fade-in', 'fade-out');
+        this.notes.forEach(note => note.classList.remove('darken'));
+        this.isToastVisible = false;
+        if (this.toastTimeout !== null) {
+            clearTimeout(this.toastTimeout);
+            this.toastTimeout = null;
+        }
+    }
+    toggleRatings() {
+        areRatingsVisible = !areRatingsVisible;
+        const ratingElements = document.querySelectorAll('.mmr-note-rating');
+        ratingElements.forEach(el => {
+            el.style.display = areRatingsVisible ? 'block' : 'none';
+        });
+        document.getElementById('toggleMMRRatings').textContent =
+            areRatingsVisible ? 'Hide Ratings' : 'Show Ratings';
+    }
+}
 // Initialize the graph when the DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
     window.tagGraph = new TagGraph("tagGraph");
     window.tagGraph.initialize();
+    // Add event listener for the "Add Note" button
+    const showAddNoteBtn = document.getElementById('showAddNoteBtn');
+    const addNoteSection = document.getElementById('addNoteSection');
+    if (showAddNoteBtn && addNoteSection) {
+        showAddNoteBtn.addEventListener('click', () => {
+            addNoteSection.style.display = addNoteSection.style.display === 'none' ? 'block' : 'none';
+            showAddNoteBtn.textContent = addNoteSection.style.display === 'none' ? 'Add Note ▼' : 'Hide Add Note ▲';
+        });
+    }
+    const closeAddNoteBtn = document.getElementById('closeAddNoteBtn');
+    if (closeAddNoteBtn) {
+        closeAddNoteBtn.addEventListener('click', () => {
+            const addNoteSection = document.getElementById('addNoteSection');
+            const showAddNoteBtn = document.getElementById('showAddNoteBtn');
+            if (addNoteSection && showAddNoteBtn) {
+                addNoteSection.style.display = 'none';
+                showAddNoteBtn.textContent = 'Add Note ▼';
+            }
+        });
+    }
+    // Initialize preview functionality
+    const noteText = document.getElementById('noteText');
+    const notePreview = document.getElementById('notePreview');
+    if (noteText && notePreview) {
+        noteText.addEventListener('input', () => {
+            notePreview.innerHTML = markdownToHtml(noteText.value);
+        });
+    }
+    new MMRComparison();
 });

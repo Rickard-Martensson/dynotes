@@ -136,13 +136,6 @@ class TagGraph {
     }
 
 
-    showNodeMenu(): void {
-        this.nodeMenu.style.display = 'block';
-        requestAnimationFrame(() => {
-            this.updateSimulationForces();
-        });
-    }
-
     hideNodeMenu(): void {
         this.nodeMenu.style.display = 'none';
         this.lastSelectedNode = null;
@@ -486,6 +479,10 @@ class TagGraph {
                 }
             };
         }
+
+        requestAnimationFrame(() => {
+            this.updateSimulationForces();
+        });
     }
 
     async renameNode(): Promise<void> {
@@ -695,7 +692,7 @@ class TagGraph {
         const selectedTags = Array.from(this.selectedNodes).map(n => n.name);
         const uniqueSelectedTags = [...new Set(selectedTags)].join(", ");
         document.getElementById("selectedNoteTags")!.textContent = uniqueSelectedTags;
-        document.getElementById("selectedSearchTags")!.textContent = uniqueSelectedTags;
+        // document.getElementById("selectedSearchTags")!.textContent = uniqueSelectedTags;
     }
 
     performSearch(): void {
@@ -824,6 +821,7 @@ async function updatePassword(): Promise<void> {
 }
 
 interface SearchResult {
+    mmr: number;
     text: string;
     author: string;
     date: number; // unix timestamp
@@ -950,7 +948,41 @@ function openEditNoteModal(note: SearchResult): void {
 
         // Set tags
         const editNoteTags = document.getElementById('editNoteTags') as HTMLElement;
-        editNoteTags.textContent = `Tags: ${data.tags}`;
+        editNoteTags.innerHTML = ''; // Clear existing tags
+
+        // Create a new div for tag text display
+        const tagTextDiv = document.createElement('div');
+        tagTextDiv.id = 'editNoteTagText';
+        editNoteTags.appendChild(tagTextDiv);
+
+        // Create a new div for tag selection
+        const tagSelectionDiv = document.createElement('div');
+        tagSelectionDiv.id = 'editNoteTagSelection';
+        editNoteTags.appendChild(tagSelectionDiv);
+
+        // Function to update tag text
+        function updateTagText() {
+            const selectedTags = Array.from(document.querySelectorAll('#editNoteTagSelection input:checked'))
+                .map(checkbox => (checkbox as HTMLInputElement).nextSibling?.textContent || '')
+                .filter(Boolean);
+            tagTextDiv.textContent = `Tags: ${selectedTags.join(', ')}`;
+        }
+
+        // Add all available tags as checkboxes
+        (window as any).tagGraph.nodes.forEach((tag: Tag) => {
+            const tagLabel = document.createElement('label');
+            const tagCheckbox = document.createElement('input');
+            tagCheckbox.type = 'checkbox';
+            tagCheckbox.value = tag.tag_id.toString();
+            tagCheckbox.checked = data.tags.includes(tag.name);
+            tagCheckbox.addEventListener('change', updateTagText);
+            tagLabel.appendChild(tagCheckbox);
+            tagLabel.appendChild(document.createTextNode(tag.name));
+            tagSelectionDiv.appendChild(tagLabel);
+        });
+
+        // Initial update of tag text
+        updateTagText();
 
         // Add event listeners for rating stars
         ratingStars.forEach((star) => {
@@ -976,8 +1008,6 @@ function openEditNoteModal(note: SearchResult): void {
     }
 
     populateForm(note);
-
-
 
     modal.style.display = "block";
 
@@ -1043,13 +1073,15 @@ async function saveEditedNote(noteId: number): Promise<void> {
     const rating = document.querySelectorAll("#editNoteRating .star.active").length;
     const visibility = document.querySelectorAll("#editNoteVisibility .visibility.active").length;
 
-    // You'll need to implement a way to edit tags as well
+    // Get selected tags with correct type assertion
+    const selectedTags = Array.from(document.querySelectorAll('#editNoteTagSelection input[type="checkbox"]:checked'))
+        .map((checkbox) => parseInt((checkbox as HTMLInputElement).value, 10));
 
     try {
         const response = await fetch('/edit_note', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ noteId, text, author, rating, source, visibility })
+            body: JSON.stringify({ noteId, text, author, rating, source, visibility, tags: selectedTags })
         });
 
         if (response.ok) {
@@ -1071,7 +1103,6 @@ async function saveEditedNote(noteId: number): Promise<void> {
         alert('Error updating note: ' + error);
     }
 }
-
 
 function initRating(containerId: string): void {
     const container = document.getElementById(containerId);
@@ -1097,7 +1128,7 @@ function initRating(containerId: string): void {
 initRating('noteRating');
 initRating('noteVisibility');
 
-// Function to convert markdown to HTML
+// Make sure to include or update the markdownToHtml function if it's not already present
 function markdownToHtml(markdown: string): string {
     return markdown
         .replace(/^(#{1,6})\s+(.+)$/gm, (match, hashes, content) => {
@@ -1109,7 +1140,6 @@ function markdownToHtml(markdown: string): string {
         .replace(/`([^`]+)`/g, '<code>$1</code>')
         .replace(/\n/g, '<br>');
 }
-
 
 // Function to update preview
 function updatePreview(): void {
@@ -1266,8 +1296,246 @@ async function addNote(): Promise<void> {
 }
 
 
+let currentMMRNotes: SearchResult[] = [];
+let areRatingsVisible = false;
+let isComparisonInProgress = false;
+
+class MMRComparison {
+    private toast: HTMLElement;
+    private notes: NodeListOf<HTMLElement>;
+    private toastTimeout: number | null = null;
+    private isToastVisible: boolean = false;
+
+    constructor() {
+        this.toast = document.getElementById('mmrToast') as HTMLElement;
+        this.notes = document.querySelectorAll('.mmr-note') as NodeListOf<HTMLElement>;
+        this.initializeEventListeners();
+    }
+
+    private initializeEventListeners(): void {
+        const startMMRComparisonBtn = document.getElementById('startMMRComparison');
+        const mmrModal = document.getElementById('mmrModal');
+        const closeMMRModal = mmrModal?.querySelector('.close');
+        const toggleMMRRatingsBtn = document.getElementById('toggleMMRRatings');
+        const skipMMRComparisonBtn = document.getElementById('skipMMRComparison');
+
+        startMMRComparisonBtn?.addEventListener('click', this.startComparison.bind(this));
+        closeMMRModal?.addEventListener('click', () => {
+            if (mmrModal) mmrModal.style.display = 'none';
+        });
+        toggleMMRRatingsBtn?.addEventListener('click', this.toggleRatings.bind(this));
+        skipMMRComparisonBtn?.addEventListener('click', this.startComparison.bind(this));
+
+        document.querySelectorAll('.mmr-note').forEach((noteElement, index) => {
+            noteElement.addEventListener('click', () => this.updateMMR(index));
+        });
+
+        window.addEventListener('click', (event) => {
+            if (event.target === mmrModal && mmrModal != null) {
+                mmrModal.style.display = 'none';
+            }
+        });
+
+        // Add a global click listener for managing toast visibility
+        document.addEventListener('click', this.handleGlobalClick.bind(this));
+    }
+
+    private handleGlobalClick(event: MouseEvent): void {
+        if (this.isToastVisible && !this.toast.contains(event.target as Node)) {
+            this.hideToastAndContinue();
+        }
+    }
+
+    startComparison(): void {
+        if (isComparisonInProgress) return;
+        isComparisonInProgress = true;
+        this.clearComparison();
+
+        const tags = Array.from((window as any).tagGraph.selectedNodes as Set<Tag>).map((n: Tag) => n.tag_id);
+        const password = (document.getElementById("searchPassword") as HTMLInputElement).value;
+
+        fetch('/get_mmr_notes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tags, password })
+        })
+            .then(response => response.json())
+            .then(notes => {
+                if (notes.length === 2) {
+                    currentMMRNotes = notes;
+                    this.displayNotes(notes);
+                    (document.getElementById('mmrModal') as HTMLElement).style.display = 'block';
+                } else {
+                    alert('Not enough notes found for comparison. Try selecting different tags.');
+                }
+                isComparisonInProgress = false;
+            })
+            .catch(error => {
+                console.error('Error fetching MMR notes:', error);
+                isComparisonInProgress = false;
+            });
+    }
+
+    private displayNotes(notes: SearchResult[]): void {
+        notes.forEach((note, index) => {
+            const noteElement = document.getElementById(`mmrNote${index + 1}`);
+            if (noteElement) {
+                noteElement.querySelector('.mmr-note-text')!.textContent = note.text;
+                noteElement.querySelector('.mmr-note-meta')!.textContent = `Author: ${note.author}, Source: ${note.source}, Visibility: ${getVisibilityEmoji(note.visibility)}`;
+                noteElement.querySelector('.mmr-note-tags')!.textContent = `Tags: ${note.tags}`;
+                const ratingElement = noteElement.querySelector('.mmr-note-rating') as HTMLElement;
+                ratingElement.textContent = `Rating: ${'⭐'.repeat(note.rating)}`;
+                ratingElement.style.display = areRatingsVisible ? 'block' : 'none';
+            }
+        });
+    }
+
+    private updateMMR(winnerIndex: number): void {
+        if (isComparisonInProgress) return;
+        isComparisonInProgress = true;
+
+        const winnerId = currentMMRNotes[winnerIndex].note_id;
+        const loserId = currentMMRNotes[1 - winnerIndex].note_id;
+
+        fetch('/update_mmr', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ winner_id: winnerId, loser_id: loserId })
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(result => {
+                if (result.success) {
+                    this.showComparisonResult(winnerIndex, result.winner_change, result.loser_change, result.winner_id, result.loser_id);
+                } else {
+                    console.error('Failed to update MMR:', result.error);
+                    alert('Failed to update MMR. Please try again.');
+                }
+                isComparisonInProgress = false;
+            })
+            .catch(error => {
+                console.error('Error updating MMR:', error);
+                alert('An error occurred while updating MMR. Please try again.');
+                isComparisonInProgress = false;
+            });
+    }
+
+    private showComparisonResult(winnerIndex: number, winnerChange: number, loserChange: number, winnerId: number, loserId: number): void {
+        if (this.toastTimeout !== null) {
+            clearTimeout(this.toastTimeout);
+        }
+
+        this.notes.forEach(note => note.classList.add('darken'));
+
+        const toastNotes = this.toast.querySelectorAll('.mmr-toast-note');
+        currentMMRNotes.forEach((note, index) => {
+            const toastNote = toastNotes[index];
+            const isWinner = note.note_id === winnerId;
+            const change = isWinner ? winnerChange : loserChange;
+
+            toastNote.querySelector('p')!.textContent = `Note ${index + 1} (${isWinner ? 'Winner' : 'Loser'})`;
+            toastNote.querySelector('.mmr-toast-rating')!.textContent = `Rating: ${'⭐'.repeat(note.rating)}`;
+            toastNote.querySelector('.mmr-toast-mmr')!.innerHTML = `
+                MMR: ${note.mmr} 
+                <span class="change ${change >= 0 ? 'positive' : 'negative'}">
+                    (${change >= 0 ? '+' : ''}${change})
+                </span>
+            `;
+        });
+
+        this.toast.style.display = 'block';
+        this.toast.classList.remove('fade-out');
+        this.toast.classList.add('fade-in');
+        this.isToastVisible = true;
+
+        this.toastTimeout = window.setTimeout(() => {
+            this.hideToastAndContinue();
+        }, 2000);
+    }
+
+    private hideToastAndContinue(): void {
+        if (!this.isToastVisible) return;
+
+        if (this.toastTimeout !== null) {
+            clearTimeout(this.toastTimeout);
+            this.toastTimeout = null;
+        }
+
+        this.isToastVisible = false;
+        this.toast.classList.remove('fade-in');
+        this.toast.classList.add('fade-out');
+
+        setTimeout(() => {
+            this.toast.style.display = 'none';
+            this.notes.forEach(note => note.classList.remove('darken'));
+            this.startComparison();
+        }, 300);
+    }
+
+    private clearComparison(): void {
+        this.toast.style.display = 'none';
+        this.toast.classList.remove('fade-in', 'fade-out');
+        this.notes.forEach(note => note.classList.remove('darken'));
+        this.isToastVisible = false;
+        if (this.toastTimeout !== null) {
+            clearTimeout(this.toastTimeout);
+            this.toastTimeout = null;
+        }
+    }
+
+    private toggleRatings(): void {
+        areRatingsVisible = !areRatingsVisible;
+        const ratingElements = document.querySelectorAll('.mmr-note-rating') as NodeListOf<HTMLElement>;
+        ratingElements.forEach(el => {
+            el.style.display = areRatingsVisible ? 'block' : 'none';
+        });
+        (document.getElementById('toggleMMRRatings') as HTMLElement).textContent =
+            areRatingsVisible ? 'Hide Ratings' : 'Show Ratings';
+    }
+}
 // Initialize the graph when the DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
     (window as any).tagGraph = new TagGraph("tagGraph");
     (window as any).tagGraph.initialize();
+
+    // Add event listener for the "Add Note" button
+    const showAddNoteBtn = document.getElementById('showAddNoteBtn');
+    const addNoteSection = document.getElementById('addNoteSection');
+
+    if (showAddNoteBtn && addNoteSection) {
+        showAddNoteBtn.addEventListener('click', () => {
+            addNoteSection.style.display = addNoteSection.style.display === 'none' ? 'block' : 'none';
+            showAddNoteBtn.textContent = addNoteSection.style.display === 'none' ? 'Add Note ▼' : 'Hide Add Note ▲';
+        });
+    }
+
+    const closeAddNoteBtn = document.getElementById('closeAddNoteBtn');
+    if (closeAddNoteBtn) {
+        closeAddNoteBtn.addEventListener('click', () => {
+            const addNoteSection = document.getElementById('addNoteSection');
+            const showAddNoteBtn = document.getElementById('showAddNoteBtn');
+            if (addNoteSection && showAddNoteBtn) {
+                addNoteSection.style.display = 'none';
+                showAddNoteBtn.textContent = 'Add Note ▼';
+            }
+        });
+    }
+    // Initialize preview functionality
+    const noteText = document.getElementById('noteText') as HTMLTextAreaElement;
+    const notePreview = document.getElementById('notePreview');
+
+    if (noteText && notePreview) {
+        noteText.addEventListener('input', () => {
+            notePreview.innerHTML = markdownToHtml(noteText.value);
+        });
+    }
+
+
+    new MMRComparison();
+
+
 });

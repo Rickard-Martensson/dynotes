@@ -1,11 +1,3 @@
-#addNoteForm {
-    background-color: var(--background-color);
-    border: var(--border-width) solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 15px;
-    margin-bottom: 20px;
-}
-
 .form-row {
     display: flex;
     justify-content: space-between;
@@ -48,11 +40,6 @@
 }
 
 
-#noteTextContainer {
-    display: flex;
-    margin-bottom: 10px;
-}
-
 #noteText,
 #notePreview {
     flex: 1;
@@ -75,7 +62,7 @@
 }
 
 #notePreview {
-    margin-left: 10px;
+    /* margin-left: 10px; */
     background-color: white;
     overflow-y: auto;
 }
@@ -113,4 +100,200 @@
 
 #notePreview h6 {
     font-size: 0.67em;
+}
+
+/* Add Tag and Add Note button row */
+.action-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+#addTagSection {
+    display: flex;
+    align-items: center;
+    flex-grow: 1;
+    margin-right: 10px;
+}
+
+#addTagSection input[type="text"] {
+    flex-grow: 1;
+    margin-right: 10px;
+}
+
+#addTagSection button,
+#showAddNoteBtn {
+    flex-shrink: 0;
+}
+
+/* Add Note Section */
+#addNoteSection {
+    background-color: var(--darker-background-color);
+    border: var(--border-width) solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+#addNoteForm {
+    display: flex;
+    flex-direction: column;
+}
+
+.note-form-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.note-form-row>* {
+    flex: 1;
+}
+
+.note-form-row>*:not(:last-child) {
+    margin-right: 10px;
+}
+
+/* Ensure consistent spacing between Author/Source and Text/Preview */
+.note-form-row:first-of-type>* {
+    flex-basis: calc(50% - 15px);
+}
+
+#noteTextContainer {
+    display: flex;
+    margin-bottom: 10px;
+}
+
+#noteText,
+#notePreview {
+    flex: 1;
+    min-height: 200px;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    padding: 10px;
+}
+
+#noteText {
+    margin-right: 10px;
+    resize: vertical;
+}
+
+#notePreview {
+    overflow-y: auto;
+    background-color: white;
+}
+
+.star-rating,
+.visibility-rating {
+    display: flex;
+    justify-content: flex-start;
+}
+
+.star-rating .star,
+.visibility-rating .visibility {
+    cursor: pointer;
+    margin-right: 5px;
+}
+
+/* Responsive layout */
+@media (max-width: 600px) {
+    .action-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    #addTagSection {
+        margin-right: 0;
+        margin-bottom: 10px;
+    }
+
+    .note-form-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .note-form-row>* {
+        margin-right: 0 !important;
+        margin-bottom: 10px;
+    }
+
+    /* Keep star and visibility ratings on the same row in narrow view */
+    .note-form-row:nth-child(2) {
+        flex-direction: row;
+    }
+
+    #noteTextContainer {
+        flex-direction: column;
+    }
+
+    #noteText {
+        margin-right: 0;
+        margin-bottom: 10px;
+    }
+
+    .star-rating,
+    .visibility-rating {
+        justify-content: center;
+    }
+}
+
+
+
+.settings-dropdown {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+}
+
+.settings-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+.settings-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 10px;
+    z-index: 1;
+}
+
+.settings-dropdown:hover .settings-content {
+    display: block;
+}
+
+
+#addNoteSection {
+    position: relative;
+}
+
+.close-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: black;
+}
+
+#addNoteForm {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.note-form-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
 }

@@ -69,74 +69,98 @@
             </div>
         </div>
     </div>
+    <!-- Move password update to a settings dropdown -->
+    <div class="settings-dropdown">
+        <button class="settings-btn">⚙️</button>
+        <div class="settings-content">
 
-    <h2>Add Tag</h2>
-    <input type="text" id="tagName" placeholder="Enter tag name">
-    <button onclick="addTag()">Add Tag</button>
-
-    <h2>Add Note</h2>
+            <input type="password" id="searchPassword" value="1234" placeholder="Enter password for higher visibility">
+            <button onclick="updatePassword()">Update Password</button>
+            <!-- <input type="password" id="passwordField" placeholder="Enter new password">
+            <button onclick="updatePassword()">Update Password</button> -->
+        </div>
+    </div>
     <div>
         <p>Selected Tags: <span id="selectedNoteTags"></span></p>
     </div>
-    <div id="addNoteForm">
-        <div class="form-row">
-            <input type="text" id="noteAuthor" placeholder="Author" />
-            <div class="star-rating" id="noteRating">
-                <span class="star" data-value="1">⭐</span>
-                <span class="star" data-value="2">⭐</span>
-                <span class="star" data-value="3">⭐</span>
-                <span class="star" data-value="4">⭐</span>
-                <span class="star" data-value="5">⭐</span>
-            </div>
-            <input type="text" id="noteSource" placeholder="Source" />
-            <div class="visibility-rating" id="noteVisibility">
-                <span class="visibility" data-value="1">🔓</span>
-                <span class="visibility" data-value="2">🔒</span>
-                <span class="visibility" data-value="3">🔐</span>
-                <span class="visibility" data-value="4">🔏</span>
-            </div>
+
+    <!-- Updated tag addition and note button section -->
+    <div class="action-row">
+        <div id="addTagSection">
+            <input type="text" id="tagName" placeholder="Enter tag name">
+            <button onclick="addTag()">Add Tag</button>
         </div>
-        <div id="noteTextContainer">
-            <textarea id="noteText" placeholder="Enter your note here (Markdown supported)"></textarea>
-            <div id="notePreview"></div>
-        </div>
-        <button onclick="addNote()">Add Note</button>
+        <button id="showAddNoteBtn" class="brown">Add Note ▼</button>
+        <button id="startMMRComparison">Compare Notes</button>
     </div>
-    <!-- Add this right after the #addNoteForm div -->
-    <div id="editNoteModal" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2>Edit Note</h2>
-            <div id="editNoteForm">
-                <textarea id="editNoteText"></textarea>
-                <input type="text" id="editNoteAuthor" placeholder="Author">
-                <input type="text" id="editNoteSource" placeholder="Source">
-                <div id="editNoteRating" class="star-rating">
+
+
+    <!-- Updated note addition section -->
+    <div id="addNoteSection" style="display: none;">
+        <div id="addNoteForm">
+            <button id="closeAddNoteBtn" class="close-btn">×</button>
+            <div class="note-form-row">
+                <div id="noteRating" class="star-rating">
                     <span class="star" data-value="1">⭐</span>
                     <span class="star" data-value="2">⭐</span>
                     <span class="star" data-value="3">⭐</span>
                     <span class="star" data-value="4">⭐</span>
                     <span class="star" data-value="5">⭐</span>
                 </div>
-                <div id="editNoteVisibility" class="visibility-rating">
+                <div id="noteVisibility" class="visibility-rating">
                     <span class="visibility" data-value="1">🔓</span>
                     <span class="visibility" data-value="2">🔒</span>
                     <span class="visibility" data-value="3">🔐</span>
                     <span class="visibility" data-value="4">🔏</span>
                 </div>
-                <div id="editNoteTags"></div>
-                <button id="saveEditNoteBtn" class="blue">Save Changes</button>
-                <button id="revertEditNoteBtn" class="turq">Revert Changes</button>
-                <button id="deleteNoteBtn" class="red">Delete Note</button>
             </div>
+            <div class="note-form-row">
+                <input type="text" id="noteAuthor" placeholder="Author">
+                <input type="text" id="noteSource" placeholder="Source">
+            </div>
+            <div id="noteTextContainer">
+                <textarea id="noteText" placeholder="Enter your note here (Markdown supported)"></textarea>
+                <div id="notePreview"></div>
+            </div>
+            <button onclick="addNote()">Add Note</button>
         </div>
     </div>
 
-    <div id="passwordForm">
-        <input type="password" id="searchPassword" value="1234" placeholder="Enter password for higher visibility">
-        <button onclick="updatePassword()">Update Password</button>
-    </div>
 
+
+    <!-- Add this right after the #addNoteForm div -->
+    <div id="editNoteModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Edit Note</h2>
+            <form id="editNoteForm">
+                <div class="edit-note-row">
+                    <div id="editNoteRating" class="star-rating">
+                        <span class="star" data-value="1">⭐</span>
+                        <span class="star" data-value="2">⭐</span>
+                        <span class="star" data-value="3">⭐</span>
+                        <span class="star" data-value="4">⭐</span>
+                        <span class="star" data-value="5">⭐</span>
+                    </div>
+                    <div id="editNoteVisibility" class="visibility-rating">
+                        <span class="visibility" data-value="1">🔓</span>
+                        <span class="visibility" data-value="2">🔒</span>
+                        <span class="visibility" data-value="3">🔐</span>
+                        <span class="visibility" data-value="4">🔏</span>
+                    </div>
+                </div>
+                <input type="text" id="editNoteAuthor" placeholder="Author">
+                <input type="text" id="editNoteSource" placeholder="Source">
+                <textarea id="editNoteText" placeholder="Note text"></textarea>
+                <div id="editNoteTags"></div>
+                <div class="edit-note-buttons">
+                    <button type="button" class="blue" id="saveEditNoteBtn">Save Changes</button>
+                    <button type="button" class="turq" id="revertEditNoteBtn">Revert Changes</button>
+                    <button type="button" class="red" id="deleteNoteBtn">Delete Note</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- <textarea id="noteText" placeholder="Enter note text"></textarea>
     <input type="text" id="noteAuthor" placeholder="Author">
@@ -144,10 +168,12 @@
     <input type="text" id="noteSource" placeholder="Source">
     <button onclick="addNote()">Add Note</button> -->
 
-    <h2>Search tNotes</h2>
-    <div>
+    <h2>
+        <center>Search Notes</center>
+    </h2>
+    <!-- <div>
         <p>Selected Tags: <span id="selectedSearchTags"></span></p>
-    </div>
+    </div> -->
     <div class="search-container">
         <input type="text" id="searchText" placeholder="Enter search text">
         <select id="sortCriteria">
@@ -163,6 +189,47 @@
 
     <div id="results"></div>
 
+
+    <div id="mmrModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Compare Notes</h2>
+            <div id="mmrNoteContainer">
+                <div id="mmrNote1" class="mmr-note">
+                    <p class="mmr-note-text"></p>
+                    <p class="mmr-note-meta"></p>
+                    <p class="mmr-note-tags"></p>
+                    <p class="mmr-note-rating"></p>
+                </div>
+                <div id="mmrNote2" class="mmr-note">
+                    <p class="mmr-note-text"></p>
+                    <p class="mmr-note-meta"></p>
+                    <p class="mmr-note-tags"></p>
+                    <p class="mmr-note-rating"></p>
+                </div>
+            </div>
+            <button id="toggleMMRRatings">Show Ratings</button>
+            <button id="skipMMRComparison">Skip</button>
+        </div>
+    </div>
+
+    <div id="mmrToast" class="mmr-toast">
+        <div class="mmr-toast-content">
+            <h3>Comparison Result</h3>
+            <div class="mmr-toast-notes">
+                <div class="mmr-toast-note">
+                    <p>Note 1</p>
+                    <p class="mmr-toast-rating"></p>
+                    <p class="mmr-toast-mmr"></p>
+                </div>
+                <div class="mmr-toast-note">
+                    <p>Note 2</p>
+                    <p class="mmr-toast-rating"></p>
+                    <p class="mmr-toast-mmr"></p>
+                </div>
+            </div>
+        </div>
+    </div>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="{{ url_for('static', filename='js/tagGraph.js') }}"></script>
     <!-- <script>

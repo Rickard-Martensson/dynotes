@@ -1,44 +1,42 @@
-
 # DyNotes: Dynamic Note-Taking with Tag Visualization
 
-DyNotes is a powerful note-taking application that allows users to organize their thoughts using a dynamic tag system visualized as an interactive graph.
+DyNotes is a note-taking application I created to organize thoughts using a dynamic tag system visualized as an interactive graph. I built it because I couldn't find an existing tool that quite fit my needs.
 
+![DyNotes Interface](image-1.png)
 
+## Key Features
 
-![Alt text](image-1.png)
-## Features
-
-1. **Tag-Based Search**: 
-   - Search notes by selecting one or more tags.
-   - The search respects tag hierarchies, automatically including child tags in the results.
-   - This allows for both broad and narrow searches based on your tag structure.
+1. **Tag-Based Organization**:
+   - Organize notes with a hierarchical tag system.
+   - Visualize tag relationships in an interactive graph.
+   - Search notes by selecting tags, respecting the hierarchy.
 
 2. **Full-Text Search**:
-   - Quickly find notes containing specific words or phrases.
-   - Combines with tag-based search for highly targeted queries.
+   - Find notes containing specific words or phrases.
+   - Combine with tag-based search for more precise queries.
 
 3. **Visibility Levels**:
-   - Each note has a visibility level, allowing for fine-grained access control.
-   - Search results are filtered based on the user's permission level, ensuring sensitive information remains protected.
+   - Assign visibility levels to notes for basic access control.
+   - Search results are filtered based on user's permission level.
 
-4. **Efficient Query Execution**:
-   - Utilizes SQLite's full-text search capabilities for fast results even with large numbers of notes.
-   - Implements recursive common table expressions (CTE) to efficiently traverse tag hierarchies.
+4. **MMR (Match Making Rating) System**:
+   - Compare and rank notes using an Elo-like rating system.
+   - Helps surface content you've found more useful over time.
 
-5. **Dynamic Result Updates**:
-   - Search results update in real-time as you modify your query or select different tags.
-
-This powerful combination allows users to quickly find relevant information across their entire knowledge base, making DyNotes an invaluable tool for organizing and retrieving complex, interconnected ideas.
+5. **Markdown Support**:
+   - Write notes using Markdown for basic formatting.
+   - Preview formatted notes while editing.
 
 ## Getting Started
 
-### Prerequisites
+### You'll Need
 
 - Python 3.7+
 - Flask
 - SQLite3
+- Node.js and npm (for TypeScript compilation)
 
-### Installation
+### Setup
 
 1. Clone the repository:
    ```
@@ -46,55 +44,43 @@ This powerful combination allows users to quickly find relevant information acro
    cd dynotes
    ```
 
-2. Install the required dependencies:
+2. Install Python dependencies:
    ```
    pip install -r requirements.txt
    ```
 
-3. Initialize the database:
+3. Install TypeScript and compile:
+   ```
+   npm install
+   npm run build
+   ```
+
+4. Initialize and run:
    ```
    python app.py
    ```
 
-4. Access the application:
-   Open your web browser and navigate to `http://localhost:5000`
+5. Open `http://localhost:5000` in your browser
 
-## Development Workflow
+## Development
 
-1. Make changes to `tagGraph.ts`
-2. Compile TypeScript to JavaScript:
-   ```
-   tsc
-   ```
-3. Run the Flask application:
-   ```
-   python app.py
-   ```
-4. View changes in your browser at `http://localhost:5000`
-5. Repeat steps 1-4 as needed
+1. Make changes to `tagGraph.ts` or other files.
+2. Compile TypeScript: `npm run build`
+3. Restart the Flask app: `python app.py`
+4. Refresh your browser to see changes
 
-## Deployment
+## Current State
 
-When deploying the application, make sure to update the API endpoints in `tagGraph.js`:
-
-Replace all instances of:
-```javascript
-fetch("/some_path")
-```
-with:
-```javascript
-fetch("/%entrypoint_for_your_website%/some_path")
-```
+DyNotes is a personal project that works for my needs, and works on my website. but it's not polished for wide-scale use. If you're interested in using it, you might need to tweak things to fit your setup (especially the password protection parts)
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Feel free to submit pull requests if you want to add features or fix bugs. I'm always open to improvements!
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ---
 
-Created by [Rickard](https://www.ric.ke), except for the readme, that was all Chatgpt!
-
+Created by [Rickard](https://www.ric.ke)

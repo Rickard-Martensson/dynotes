@@ -13,3 +13,4 @@ tagGraph.js
 *.otf
 dontreadme.md
 migrate_mmr.py
+*.js

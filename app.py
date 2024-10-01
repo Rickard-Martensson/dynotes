@@ -343,6 +343,77 @@ def search():
     )
     SELECT n.note_id, n.text, n.author, n.date, n.rating, n.source, n.visibility, n.mmr, n.mmr_matches,
            GROUP_CONCAT(DISTINCT t.name) as tags
+    FROM Notes n
+    JOIN matching_notes mn ON n.note_id = mn.note_id
+    JOIN NoteTags nt ON n.note_id = nt.note_id
+    JOIN Tags t ON nt.tag_id = t.tag_id
+    WHERE n.visibility <= ?
+    """
+
+    params = []
+    if selected_tags:
+        tag_placeholders = ",".join("?" for _ in selected_tags)
+        params.extend(selected_tags)
+    else:
+        tag_placeholders = "SELECT tag_id FROM Tags"
+
+    query = query.format(tag_placeholders)
+    params.extend([len(selected_tags), visibility_level])
+
+    if search_text:
+        query += " AND n.text LIKE ?"
+        params.append(f"%{search_text}%")
+
+    query += " GROUP BY n.note_id"
+
+    sort_field, sort_order = sort_criteria.split("-")
+    sort_mapping = {"stars": "n.rating", "date": "n.date", "visibility": "n.visibility", "mmr": "n.mmr"}  # Add this line
+    query += f" ORDER BY {sort_mapping[sort_field]} {'DESC' if sort_order == 'desc' else 'ASC'}"
+
+    app.logger.debug(f"Search query: {query}")
+    app.logger.debug(f"Search params: {params}")
+
+    cursor = db.execute(query, params)
+    results = cursor.fetchall()
+
+    filtered_results = [dict(row) for row in results if row["visibility"] <= visibility_level]
+
+    app.logger.debug(f"Filtered search results: {filtered_results}")
+
+    return jsonify(filtered_results)
+
+
+@app.route("/search", methods=["POST"])
+def search2():
+    db = get_db()
+    data = request.json
+    app.logger.debug(f"Search request data: {data}")
+    selected_tags = data.get("tags", [])
+    search_text = data.get("text", "")
+    password = data.get("password", "")
+    sort_criteria = data.get("sortCriteria", "stars-desc")  # Default sorting
+
+    visibility_level = 5 if check_password_hash(PASSWORD_HASH, password) else 1
+
+    query = """
+    WITH RECURSIVE
+    tag_hierarchy(root_id, descendant_id) AS (
+        SELECT tag_id, tag_id FROM Tags WHERE tag_id IN ({})
+        UNION
+        SELECT th.root_id, tr.child_tag_id
+        FROM tag_hierarchy th
+        JOIN TagRelationships tr ON th.descendant_id = tr.parent_tag_id
+    ),
+    matching_notes AS (
+        SELECT n.note_id
+        FROM Notes n
+        JOIN NoteTags nt ON n.note_id = nt.note_id
+        JOIN tag_hierarchy th ON nt.tag_id = th.descendant_id
+        GROUP BY n.note_id
+        HAVING COUNT(DISTINCT th.root_id) = ?
+    )
+    SELECT n.note_id, n.text, n.author, n.date, n.rating, n.source, n.visibility, n.mmr, n.mmr_matches,
+           GROUP_CONCAT(DISTINCT t.name) as tags
 
     FROM Notes n
     JOIN matching_notes mn ON n.note_id = mn.note_id

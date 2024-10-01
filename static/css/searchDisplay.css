@@ -49,6 +49,18 @@
     align-items: center;
 }
 
+.note-rating {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.note-mmr {
+    font-size: 0.8em;
+    color: #777;
+    font-weight: normal;
+}
+
 .edit-note-btn {
     background: none;
     border: none;

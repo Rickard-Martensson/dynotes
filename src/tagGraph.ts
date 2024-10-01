@@ -868,7 +868,8 @@ function displaySearchResults(results: SearchResult[]): void {
 
         const textContainer = document.createElement("div");
         textContainer.className = "note-text";
-        textContainer.textContent = note.text;
+        textContainer.innerHTML = parseMarkdown(note.text); // Use innerHTML with parsed Markdown
+
 
         const metaContainer = document.createElement("div");
         metaContainer.className = "note-meta";
@@ -900,7 +901,8 @@ function displaySearchResults(results: SearchResult[]): void {
 
         const tagsElement = document.createElement("div");
         tagsElement.className = "note-tags";
-        tagsElement.textContent = `Tags: ${note.tags}`;
+        const wrappedTags = wrapTags(note.tags);
+        tagsElement.innerHTML = `${wrappedTags.join('<br>')}`;
 
         metaContainer.appendChild(ratingAndControlsElement);
         metaContainer.appendChild(tagsElement);
@@ -922,6 +924,61 @@ function getVisibilityEmoji(visibility: number): string {
         case 4: return "🔏";
         default: return "🔓";
     }
+}
+
+function wrapTags(tags: string, maxLineLength: number = 30): string[] {
+    console.log("Input tags:", tags);
+    console.log("Max line length:", maxLineLength);
+
+    const tagArray = tags.split(',');
+    let lines: string[] = [];
+    let currentLine = '';
+
+    tagArray.forEach(tag => {
+        tag = tag.trim();
+        console.log("Processing tag:", tag);
+
+        if (currentLine.length === 0) {
+            currentLine = tag;
+        } else if (currentLine.length + tag.length + 2 <= maxLineLength) {
+            currentLine += ', ' + tag;
+        } else {
+            lines.push(currentLine);
+            currentLine = tag;
+        }
+        console.log("Current line:", currentLine);
+    });
+
+    if (currentLine.length > 0) {
+        lines.push(currentLine);
+    }
+
+    console.log("Resulting lines:", lines);
+    return lines;
+}
+
+function parseMarkdown(text: string): string {
+    // Headers
+    text = text.replace(/^(#{1,6})\s+(.+)$/gm, (match, hashes, content) => {
+        const level = hashes.length;
+        return `<h${level}>${content}</h${level}>`;
+    });
+
+    // Bold and Italic
+    text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+    // Lists
+    text = text.replace(/^-\s+(.+)$/gm, '<ul><li>$1</li></ul>');
+    text = text.replace(/<\/ul><ul>/g, '');
+
+    // Line thing or whatever
+    text = text.replace(/^----+$/gm, '<hr>');
+
+    // Preserve line breaks
+    text = text.replace(/\n/g, '<br>');
+
+    return text;
 }
 
 // Add these functions at the end of the file

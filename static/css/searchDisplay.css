@@ -22,6 +22,9 @@
 .note-text {
     flex: 1;
     margin-right: 20px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: Tiempos, Georgia, 'Times New Roman', Times, serif;
 }
 
 .note-meta {
@@ -71,11 +74,6 @@
     align-items: center;
 }
 
-.note-tags {
-    color: #7f8c8d;
-    margin-top: 2px;
-}
-
 .search-container {
     display: flex;
     gap: 5px;
@@ -99,7 +97,6 @@
 
 .search-container button {
     white-space: nowrap;
-    /* Prevent button text from wrapping */
 }
 
 /* Ensure consistent height for all elements */
@@ -142,4 +139,71 @@
         margin-bottom: 5px;
         /* Remove negative margin from last element */
     }
+}
+
+
+.note-text h1,
+.note-text h2,
+.note-text h3,
+.note-text h4,
+.note-text h5,
+.note-text h6 {
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+    font-weight: bold;
+}
+
+.note-text h1 {
+    font-size: 1.3em;
+}
+
+.note-text h2 {
+    font-size: 1.2em;
+}
+
+.note-text h3 {
+    font-size: 1.1em;
+}
+
+.note-text h4 {
+    font-size: 1.0em;
+}
+
+.note-text h5 {
+    font-size: 1em;
+}
+
+.note-text h6 {
+    font-size: 0.9em;
+}
+
+.note-text ul,
+.note-text ol {
+    margin-left: 0em;
+    margin-top: -0.5em;
+    margin-bottom: 0em;
+}
+
+.note-text strong {
+    font-weight: bold;
+}
+
+.note-text em {
+    font-style: italic;
+}
+
+.note-text hr {
+    border: none;
+    border-top: 1px solid #ccc;
+    margin: 0.2em 0;
+}
+
+.note-tags {
+    color: #7f8c8d;
+    margin-top: 5px;
+    line-height: 1.4;
+    white-space: normal;
+    /* Ensure line breaks are respected */
+    word-wrap: break-word;
+    /* Allow long words to break */
 }

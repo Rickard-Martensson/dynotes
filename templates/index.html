@@ -41,7 +41,7 @@
             <div class="header-section">
                 <div class="title-container">
                     <h3>Node Details</h3>
-                    <button id="deleteTagBtn" class="red">Delete</button>
+                    <button id="deleteTagBtn" class="danger">Delete</button>
                 </div>
                 <button id="closeNodeMenu" class="close-btn">&times;</button>
             </div>
@@ -88,10 +88,10 @@
     <div class="action-row">
         <div id="addTagSection">
             <input type="text" id="tagName" placeholder="Enter tag name">
-            <button onclick="addTag()">Add Tag</button>
+            <button onclick="addTag()" class="normal">Add Tag</button>
         </div>
         <button id="showAddNoteBtn" class="brown">Add Note ▼</button>
-        <button id="startMMRComparison">Compare Notes</button>
+        <button id="startMMRComparison" class="brown">Compare Notes</button>
     </div>
 
 
@@ -154,9 +154,9 @@
                 <textarea id="editNoteText" placeholder="Note text"></textarea>
                 <div id="editNoteTags"></div>
                 <div class="edit-note-buttons">
-                    <button type="button" class="blue" id="saveEditNoteBtn">Save Changes</button>
-                    <button type="button" class="turq" id="revertEditNoteBtn">Revert Changes</button>
-                    <button type="button" class="red" id="deleteNoteBtn">Delete Note</button>
+                    <button type="button" class="normal" id="saveEditNoteBtn">Save Changes</button>
+                    <button type="button" class="reset" id="revertEditNoteBtn">Revert Changes</button>
+                    <button type="button" class="danger" id="deleteNoteBtn">Delete Note</button>
                 </div>
             </form>
         </div>
@@ -169,7 +169,7 @@
     <button onclick="addNote()">Add Note</button> -->
 
     <h2>
-        <center>Search Notes</center>
+        <center>Search</center>
     </h2>
     <!-- <div>
         <p>Selected Tags: <span id="selectedSearchTags"></span></p>

@@ -125,6 +125,11 @@
 #addTagSection button,
 #showAddNoteBtn {
     flex-shrink: 0;
+
+}
+
+#showAddNoteBtn {
+    margin-right: 10px;
 }
 
 /* Add Note Section */

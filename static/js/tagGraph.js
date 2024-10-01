@@ -718,6 +718,9 @@ function displaySearchResults(results) {
             case 'visibility':
                 comparison = a.visibility - b.visibility;
                 break;
+            case 'mmr':
+                comparison = a.mmr - b.mmr;
+                break;
         }
         return order === 'desc' ? -comparison : comparison;
     });
@@ -739,12 +742,16 @@ function displaySearchResults(results) {
         const visibilityIcon = document.createElement("span");
         visibilityIcon.className = "note-visibility";
         visibilityIcon.textContent = getVisibilityEmoji(note.visibility);
+        const mmrElement = document.createElement("span");
+        mmrElement.className = "note-mmr";
+        mmrElement.textContent = `(${note.mmr})`;
         const editButton = document.createElement("button");
         editButton.className = "edit-note-btn";
         editButton.innerHTML = "✏️"; // Pencil emoji
         editButton.onclick = () => openEditNoteModal(note);
         ratingAndControlsElement.appendChild(ratingElement);
         ratingAndControlsElement.appendChild(visibilityIcon);
+        ratingAndControlsElement.appendChild(mmrElement);
         ratingAndControlsElement.appendChild(editButton);
         const tagsElement = document.createElement("div");
         tagsElement.className = "note-tags";

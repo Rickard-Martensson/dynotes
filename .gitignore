@@ -9,8 +9,7 @@ tags.md
 wsgi.py
 migrate_old_notes.py
 tagGraph.js
-*.ttf
-*.otf
+
 dontreadme.md
 migrate_mmr.py
 *.js

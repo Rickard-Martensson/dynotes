@@ -51,7 +51,7 @@
 
             <div class="rename-section">
                 <input type="text" id="nodeName" placeholder="Node name">
-                <button onclick="tagGraph.renameNode()">Rename</button>
+                <button onclick="tagGraph.renameNode()" class="reset">Rename</button>
             </div>
             <h4>Parents</h4>
             <ul id="nodeParents"></ul>
@@ -172,6 +172,7 @@
     <h2>
         <center>Search</center>
     </h2>
+    <div id="loadingIndicator" class="loading-indicator"><span class="dots"></span></div>
     <!-- <div>
         <p>Selected Tags: <span id="selectedSearchTags"></span></p>
     </div> -->
@@ -187,7 +188,7 @@
             <option value="mmr-desc">🥊MMR (High to low)</option>
             <option value="mmr-asc">🥊MMR (Low to high)</option>
         </select>
-        <button onclick="searchNotes()">Search</button>
+        <button onclick="searchNotes()" class="normal">Search</button>
     </div>
 
     <div id="results"></div>
@@ -211,8 +212,14 @@
                     <p class="mmr-note-rating"></p>
                 </div>
             </div>
-            <button id="toggleMMRRatings">Show Ratings</button>
-            <button id="skipMMRComparison">Skip</button>
+            <div class="mmr-controls">
+                <button id="toggleMMRRatings">Show Ratings</button>
+                <button id="skipMMRComparison">Skip</button>
+                <label for="fastModeCheckbox" class="fast-mode-label">
+                    <input type="checkbox" id="fastModeCheckbox">
+                    Fast-mode
+                </label>
+            </div>
         </div>
     </div>
 

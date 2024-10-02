@@ -296,8 +296,7 @@ class TagGraph {
                     this.isHoldReady = true;
                     this.startNodeWiggle(event.sourceEvent.target as Element);
                     // select node if you hold it for .5 sec
-                    this.lastSelectedNode = d;
-                    this.updateNodeMenu();
+
 
                     this.freezeAllNodes()
                 }, timeToWiggle);
@@ -607,6 +606,10 @@ class TagGraph {
             } else {
                 await this.createRelationship(targetNode, draggedNode);
             }
+        } else {
+            // If you dragged till wiggle, and didnt merge, we open the menu
+            this.lastSelectedNode = draggedNode;
+            this.updateNodeMenu();
         }
         this.draggedNode = null;
     }
@@ -696,6 +699,7 @@ class TagGraph {
     }
 
     performSearch(): void {
+        toggleLoadingAnimation(true)
         const searchText = (document.getElementById("searchText") as HTMLInputElement).value;
         const password = (document.getElementById("searchPassword") as HTMLInputElement).value;
 
@@ -781,8 +785,6 @@ async function addTag(): Promise<void> {
     }
 }
 
-
-
 async function searchNotes(): Promise<void> {
     const searchText = (document.getElementById("searchText") as HTMLInputElement).value;
     const password = (document.getElementById("searchPassword") as HTMLInputElement).value;
@@ -833,6 +835,12 @@ interface SearchResult {
 }
 
 interface OriginalNoteData extends SearchResult { }
+
+function toggleLoadingAnimation(isSerarching: boolean) {
+    const loadingIndicator = document.getElementById("loadingIndicator");
+    if (loadingIndicator) loadingIndicator.style.display = isSerarching ? 'block' : 'none';
+
+}
 
 function displaySearchResults(results: SearchResult[]): void {
     const resultsContainer = document.getElementById("results")!;
@@ -914,6 +922,8 @@ function displaySearchResults(results: SearchResult[]): void {
     });
 
     resultsContainer.appendChild(notesContainer);
+
+    toggleLoadingAnimation(false);
 }
 
 function getVisibilityEmoji(visibility: number): string {
@@ -1368,10 +1378,15 @@ class MMRComparison {
     private toastTimeout: number | null = null;
     private isToastVisible: boolean = false;
     private pendingComparison: boolean = false;
+    private comparisonQueue: SearchResult[][] = [];
+    private isLoadingComparisons: boolean = false;
+    private fastModeCheckbox: HTMLInputElement;
 
     constructor() {
         this.toast = document.getElementById('mmrToast') as HTMLElement;
         this.notes = document.querySelectorAll('.mmr-note') as NodeListOf<HTMLElement>;
+        this.fastModeCheckbox = document.getElementById('fastModeCheckbox') as HTMLInputElement;
+
         this.initializeEventListeners();
     }
     private initializeEventListeners(): void {
@@ -1380,17 +1395,21 @@ class MMRComparison {
         const closeMMRModal = mmrModal?.querySelector('.close');
         const toggleMMRRatingsBtn = document.getElementById('toggleMMRRatings');
         const skipMMRComparisonBtn = document.getElementById('skipMMRComparison');
+        if (skipMMRComparisonBtn) {
+            skipMMRComparisonBtn.addEventListener('click', () => this.showNextComparison());
+        }
 
         startMMRComparisonBtn?.addEventListener('click', this.startComparison.bind(this));
         closeMMRModal?.addEventListener('click', () => {
             if (mmrModal) mmrModal.style.display = 'none';
         });
         toggleMMRRatingsBtn?.addEventListener('click', this.toggleRatings.bind(this));
-        skipMMRComparisonBtn?.addEventListener('click', this.startComparison.bind(this));
 
         document.querySelectorAll('.mmr-note').forEach((noteElement, index) => {
             noteElement.addEventListener('click', () => this.updateMMR(index));
         });
+
+
 
         window.addEventListener('click', (event) => {
             if (event.target === mmrModal && mmrModal != null) {
@@ -1408,7 +1427,57 @@ class MMRComparison {
         }
     }
 
-    startComparison(): void {
+    async startComparison(): Promise<void> {
+        if (this.comparisonQueue.length === 0) {
+            await this.loadMoreComparisons();
+        }
+        this.showNextComparison();
+    }
+
+    private showNextComparison(): void {
+        if (this.comparisonQueue.length > 0) {
+            const notes = this.comparisonQueue.shift()!;
+            currentMMRNotes = notes;
+            this.displayNotes(notes);
+            (document.getElementById('mmrModal') as HTMLElement).style.display = 'block';
+        } else {
+            this.loadMoreComparisons().then(() => {
+                if (this.comparisonQueue.length > 0) {
+                    this.showNextComparison();
+                } else {
+                    alert('No more comparisons available. Try selecting different tags.');
+                }
+            });
+        }
+    }
+
+    private async loadMoreComparisons(): Promise<void> {
+        if (this.isLoadingComparisons) return;
+        this.isLoadingComparisons = true;
+
+        const tags = Array.from((window as any).tagGraph.selectedNodes as Set<Tag>).map((n: Tag) => n.tag_id);
+        const password = (document.getElementById("searchPassword") as HTMLInputElement).value;
+
+        try {
+            const response = await fetch('/get_mmr_notes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tags, password })
+            });
+            const notes = await response.json();
+            if (notes.length === 2) {
+                this.comparisonQueue.push(notes);
+            } else {
+                console.warn('Not enough notes found for comparison.');
+            }
+        } catch (error) {
+            console.error('Error fetching MMR notes:', error);
+        } finally {
+            this.isLoadingComparisons = false;
+        }
+    }
+
+    startComparisonOld(): void {
         if (isComparisonInProgress) return;
         isComparisonInProgress = true;
         this.clearComparison();
@@ -1453,6 +1522,47 @@ class MMRComparison {
     }
 
     private updateMMR(winnerIndex: number): void {
+        if (this.pendingComparison) return;
+        this.pendingComparison = true;
+
+        const winnerId = currentMMRNotes[winnerIndex].note_id;
+        const loserId = currentMMRNotes[1 - winnerIndex].note_id;
+
+        fetch('/update_mmr', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ winner_id: winnerId, loser_id: loserId })
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(result => {
+                if (result.success) {
+                    this.showComparisonResult(winnerIndex, result.winner_change, result.loser_change, result.winner_id, result.loser_id);
+                    // Preemptively load more comparisons if the queue is getting low
+                    if (this.fastModeCheckbox.checked) {
+                        this.hideToastAndContinue();
+                    }
+                    if (this.comparisonQueue.length < 3) {
+                        this.loadMoreComparisons();
+                    }
+                } else {
+                    console.error('Failed to update MMR:', result.error);
+                    alert('Failed to update MMR. Please try again.');
+                    this.pendingComparison = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error updating MMR:', error);
+                alert('An error occurred while updating MMR. Please try again.');
+                this.pendingComparison = false;
+            });
+    }
+
+    private updateMMR_old(winnerIndex: number): void {
         if (isComparisonInProgress) return;
         isComparisonInProgress = true;
 
@@ -1534,13 +1644,12 @@ class MMRComparison {
         this.toast.classList.remove('fade-in');
         this.toast.classList.add('fade-out');
 
+        this.pendingComparison = false;
+        this.showNextComparison(); // Immediately show the next comparison
         setTimeout(() => {
             this.toast.style.display = 'none';
             this.notes.forEach(note => note.classList.remove('darken'));
-            if (this.pendingComparison) {
-                this.pendingComparison = false;
-                this.startComparison();
-            }
+
         }, 300);
     }
 

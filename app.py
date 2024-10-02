@@ -193,6 +193,65 @@ def get_mmr_notes():
 
     visibility_level = 5 if check_password_hash(PASSWORD_HASH, password) else 1
 
+    # New base query that doesn't rely on tag selection
+    base_query = """
+    SELECT n.note_id, n.text, n.author, n.date, n.rating, n.source, n.visibility, n.mmr, n.mmr_matches,
+           GROUP_CONCAT(DISTINCT t.name) as tags
+    FROM Notes n
+    LEFT JOIN NoteTags nt ON n.note_id = nt.note_id
+    LEFT JOIN Tags t ON nt.tag_id = t.tag_id
+    WHERE n.visibility <= ?
+    """
+
+    params = [visibility_level]
+
+    # If tags are selected, add tag filtering
+    if selected_tags:
+        tag_query = """
+        WITH RECURSIVE
+        tag_hierarchy(root_id, descendant_id) AS (
+            SELECT tag_id, tag_id FROM Tags WHERE tag_id IN ({})
+            UNION
+            SELECT th.root_id, tr.child_tag_id
+            FROM tag_hierarchy th
+            JOIN TagRelationships tr ON th.descendant_id = tr.parent_tag_id
+        )
+        SELECT n.note_id
+        FROM Notes n
+        JOIN NoteTags nt ON n.note_id = nt.note_id
+        JOIN tag_hierarchy th ON nt.tag_id = th.descendant_id
+        GROUP BY n.note_id
+        HAVING COUNT(DISTINCT th.root_id) = ?
+        """
+        tag_placeholders = ",".join("?" for _ in selected_tags)
+        tag_query = tag_query.format(tag_placeholders)
+        base_query = f"{base_query} AND n.note_id IN ({tag_query})"
+        params.extend(selected_tags)
+        params.append(len(selected_tags))
+
+    # Finalize the query
+    query = f"""
+    {base_query}
+    GROUP BY n.note_id
+    ORDER BY RANDOM()
+    LIMIT 2
+    """
+
+    cursor = db.execute(query, params)
+    results = cursor.fetchall()
+
+    return jsonify([dict(row) for row in results])
+
+
+@app.route("/get_mmr_notes", methods=["POST"])
+def get_mmr_notes2():
+    db = get_db()
+    data = request.json
+    selected_tags = data.get("tags", [])
+    password = data.get("password", "")
+
+    visibility_level = 5 if check_password_hash(PASSWORD_HASH, password) else 1
+
     query = """
     WITH RECURSIVE
     tag_hierarchy(root_id, descendant_id) AS (

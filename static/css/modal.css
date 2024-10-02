@@ -250,3 +250,14 @@
 .darken {
     filter: brightness(50%);
 }
+
+.fast-mode-label {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 10px;
+    font-weight: bold;
+}
+
+.fast-mode-label input[type="checkbox"] {
+    margin-right: 5px;
+}

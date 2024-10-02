@@ -148,8 +148,8 @@
 .note-text h4,
 .note-text h5,
 .note-text h6 {
-    margin-top: 0.5em;
-    margin-bottom: 0.5em;
+    margin-top: 0.0em;
+    margin-bottom: -0.5em;
     font-weight: bold;
 }
 
@@ -213,7 +213,8 @@
 .note-text hr {
     border: none;
     border-top: 1px solid #ccc;
-    margin: 0.2em 0;
+    margin-top: -0em;
+    margin-bottom: -1.0em;
 }
 
 .note-tags {
@@ -221,7 +222,52 @@
     margin-top: 5px;
     line-height: 1.4;
     white-space: normal;
-    /* Ensure line breaks are respected */
     word-wrap: break-word;
-    /* Allow long words to break */
+}
+
+.loading-indicator {
+    text-align: center;
+    font-weight: bold;
+    margin-top: 10px;
+    font-family: Tiempos;
+    display: none;
+    line-height: 0;
+    /* dont wanna make the page jump*/
+    margin-top: -1em;
+    /* make the dots higher up */
+    margin-bottom: 1em;
+}
+
+.loading-indicator-content {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -20px;
+}
+
+.loading-indicator .dots:after {
+    content: '.';
+    font-family: Tiempos;
+    animation: dots 1.5s steps(5, end) infinite;
+}
+
+@keyframes dots {
+
+    0%,
+    20% {
+        content: '.';
+    }
+
+    40% {
+        content: '. .';
+    }
+
+    60% {
+        content: '. . .';
+    }
+
+    80%,
+    100% {
+        content: '. . . .';
+    }
 }

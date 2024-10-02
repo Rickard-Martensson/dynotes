@@ -51,7 +51,7 @@
     border: 1px solid var(--border-color);
     border-radius: 5px;
     box-sizing: border-box;
-    font-family: Cascode, Arial, sans-serif;
+    font-family: Tiempos, Arial, sans-serif;
 
 }
 
@@ -73,21 +73,21 @@
 #notePreview h4,
 #notePreview h5,
 #notePreview h6 {
-    margin-top: 0.5em;
-    margin-bottom: 0.5em;
+    margin-top: 0em;
+    margin-bottom: 0em;
     font-weight: bold;
 }
 
 #notePreview h1 {
-    font-size: 2em;
+    font-size: 1.3em;
 }
 
 #notePreview h2 {
-    font-size: 1.5em;
+    font-size: 1.2em;
 }
 
 #notePreview h3 {
-    font-size: 1.17em;
+    font-size: 1.1em;
 }
 
 #notePreview h4 {
@@ -95,12 +95,19 @@
 }
 
 #notePreview h5 {
-    font-size: 0.83em;
+    font-size: 1.0em;
 }
 
 #notePreview h6 {
-    font-size: 0.67em;
+    font-size: 0.9em;
 }
+
+/* #notePreview hr {
+    border: none;
+    border-top: 1px solid #ccc;
+    margin-top: 0em;
+    margin-bottom: 0em;
+} */
 
 /* Add Tag and Add Note button row */
 .action-row {

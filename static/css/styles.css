@@ -32,6 +32,10 @@ h2,
     --primary-color: #ff793f;
     --text-color: #2c3e50;
     --button-hover-color: #cd6133;
+
+    --md-margin-top: 0em;
+    --md-margin-bottom: -0.5em;
+    --md-margin-bottom-hr: -1em;
 }
 
 body {

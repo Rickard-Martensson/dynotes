@@ -142,14 +142,16 @@
 }
 
 
+
+
 .note-text h1,
 .note-text h2,
 .note-text h3,
 .note-text h4,
 .note-text h5,
 .note-text h6 {
-    margin-top: 0.0em;
-    margin-bottom: -0.5em;
+    margin-top: var(--md-margin-top);
+    margin-bottom: var(--md-margin-bottom);
     font-weight: bold;
 }
 
@@ -213,8 +215,8 @@
 .note-text hr {
     border: none;
     border-top: 1px solid #ccc;
-    margin-top: -0em;
-    margin-bottom: -1.0em;
+    margin-top: var(--md-margin-top);
+    margin-bottom: var(--md-margin-bottom-hr);
 }
 
 .note-tags {

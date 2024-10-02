@@ -117,7 +117,7 @@ class TagGraph {
             return;
         }
         try {
-            const response = await fetch('/delete_tag', {
+            const response = await fetch('/dynotes/delete_tag', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ tag_id: tagId })
@@ -156,8 +156,8 @@ class TagGraph {
     }
     async loadData() {
         const [tagsResponse, relationshipsResponse] = await Promise.all([
-            fetch('/tags'),
-            fetch('/tag_relationships')
+            fetch('/dynotes/tags'),
+            fetch('/dynotes/tag_relationships')
         ]);
         const tags = await tagsResponse.json();
         const relationships = await relationshipsResponse.json();
@@ -218,10 +218,10 @@ class TagGraph {
             .duration(75)
             .attr("transform", "translate(2, -2)")
             .on("end", () => {
-            if (this.isHoldReady) {
-                this.startNodeWiggle(element);
-            }
-        });
+                if (this.isHoldReady) {
+                    this.startNodeWiggle(element);
+                }
+            });
     }
     stopNodeWiggle(element) {
         d3.select(element)
@@ -232,66 +232,66 @@ class TagGraph {
         const timeToWiggle = 750;
         return d3.drag()
             .on("start", (event, d) => {
-            this.isDragging = false;
-            this.isHoldReady = false;
-            if (!event.active)
-                this.simulation.alphaTarget(0.3).restart();
-            d.fx = d.x;
-            d.fy = d.y;
-            this.draggedNode = d;
-            d3.select(event.sourceEvent.target)
-                .attr("r", this.getNodeSize(d) * 1.2) // Increase size by 20% when dragging
-                .attr("fill", TagGraph.COLORS.NODE_STROKE);
-            // Start the hold timer
-            this.holdTimer = window.setTimeout(() => {
-                this.isHoldReady = true;
-                this.startNodeWiggle(event.sourceEvent.target);
-                // select node if you hold it for .5 sec
-                this.freezeAllNodes();
-            }, timeToWiggle);
-        })
+                this.isDragging = false;
+                this.isHoldReady = false;
+                if (!event.active)
+                    this.simulation.alphaTarget(0.3).restart();
+                d.fx = d.x;
+                d.fy = d.y;
+                this.draggedNode = d;
+                d3.select(event.sourceEvent.target)
+                    .attr("r", this.getNodeSize(d) * 1.2) // Increase size by 20% when dragging
+                    .attr("fill", TagGraph.COLORS.NODE_STROKE);
+                // Start the hold timer
+                this.holdTimer = window.setTimeout(() => {
+                    this.isHoldReady = true;
+                    this.startNodeWiggle(event.sourceEvent.target);
+                    // select node if you hold it for .5 sec
+                    this.freezeAllNodes();
+                }, timeToWiggle);
+            })
             .on("drag", (event, d) => {
-            if (!this.isHoldReady) {
-                // If not held long enough, just move the node
+                if (!this.isHoldReady) {
+                    // If not held long enough, just move the node
+                    d.fx = event.x;
+                    d.fy = event.y;
+                    if (!event.active)
+                        this.simulation.alpha(0.3).restart();
+                    return;
+                }
+                this.isDragging = true;
                 d.fx = event.x;
                 d.fy = event.y;
                 if (!event.active)
                     this.simulation.alpha(0.3).restart();
-                return;
-            }
-            this.isDragging = true;
-            d.fx = event.x;
-            d.fy = event.y;
-            if (!event.active)
-                this.simulation.alpha(0.3).restart();
-            const targetNode = this.getNodeAtPosition(event.x, event.y, d);
-            this.svg.selectAll(".node circle")
-                .attr("stroke", node => node === targetNode && node !== d ? TagGraph.COLORS.NODE_STROKE : null)
-                .attr("stroke-width", node => node === targetNode && node !== d ? 3 : null);
-            this.updateInfoText(d, targetNode);
-        })
+                const targetNode = this.getNodeAtPosition(event.x, event.y, d);
+                this.svg.selectAll(".node circle")
+                    .attr("stroke", node => node === targetNode && node !== d ? TagGraph.COLORS.NODE_STROKE : null)
+                    .attr("stroke-width", node => node === targetNode && node !== d ? 3 : null);
+                this.updateInfoText(d, targetNode);
+            })
             .on("end", (event, d) => {
-            if (this.holdTimer) {
-                clearTimeout(this.holdTimer);
-                this.holdTimer = null;
-            }
-            this.stopNodeWiggle(event.sourceEvent.target);
-            if (!event.active)
-                this.simulation.alphaTarget(0);
-            d.fx = null;
-            d.fy = null;
-            if (this.isHoldReady) {
-                this.handleDragEnd(event, d);
-            }
-            this.unfreezeAllNodes();
-            d3.select(event.sourceEvent.target)
-                .attr("r", this.getNodeSize(d))
-                .attr("fill", this.getNodeColor(d));
-            this.svg.selectAll(".node circle").attr("stroke", null);
-            this.infoText.text("");
-            this.isDragging = false;
-            this.isHoldReady = false;
-        });
+                if (this.holdTimer) {
+                    clearTimeout(this.holdTimer);
+                    this.holdTimer = null;
+                }
+                this.stopNodeWiggle(event.sourceEvent.target);
+                if (!event.active)
+                    this.simulation.alphaTarget(0);
+                d.fx = null;
+                d.fy = null;
+                if (this.isHoldReady) {
+                    this.handleDragEnd(event, d);
+                }
+                this.unfreezeAllNodes();
+                d3.select(event.sourceEvent.target)
+                    .attr("r", this.getNodeSize(d))
+                    .attr("fill", this.getNodeColor(d));
+                this.svg.selectAll(".node circle").attr("stroke", null);
+                this.infoText.text("");
+                this.isDragging = false;
+                this.isHoldReady = false;
+            });
     }
     freezeAllNodes() {
         this.nodes.forEach(node => {
@@ -416,7 +416,7 @@ class TagGraph {
     async renameNode() {
         const newName = document.getElementById('nodeName').value;
         if (this.lastSelectedNode && newName !== this.lastSelectedNode.name) {
-            const response = await fetch('/rename_tag', {
+            const response = await fetch('/dynotes/rename_tag', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ tag_id: this.lastSelectedNode.tag_id, new_name: newName })
@@ -536,7 +536,7 @@ class TagGraph {
     }
     async createRelationship(parentNode, childNode) {
         const selectedNodesBefore = new Set(this.selectedNodes);
-        const response = await fetch('/update_tag_relationships', {
+        const response = await fetch('/dynotes/update_tag_relationships', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ parent_id: parentNode.tag_id, child_id: childNode.tag_id })
@@ -560,7 +560,7 @@ class TagGraph {
     }
     async removeRelationship(relationship) {
         const selectedNodesBefore = new Set(this.selectedNodes);
-        const response = await fetch('/remove_tag_relationship', {
+        const response = await fetch('/dynotes/remove_tag_relationship', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ parent_id: relationship.source.tag_id, child_id: relationship.target.tag_id })
@@ -601,7 +601,7 @@ class TagGraph {
         const searchText = document.getElementById("searchText").value;
         const password = document.getElementById("searchPassword").value;
         const tags = Array.from(this.selectedNodes).map(n => n.tag_id);
-        fetch('/search', {
+        fetch('/dynotes/search', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text: searchText, tags, password })
@@ -659,7 +659,7 @@ async function addTag() {
     if (!name)
         return;
     const readable_id = generateReadableId(name);
-    const response = await fetch('/add_tag', {
+    const response = await fetch('/dynotes/add_tag', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, readable_id })
@@ -677,7 +677,7 @@ async function searchNotes() {
     const password = document.getElementById("searchPassword").value;
     const tags = Array.from(window.tagGraph.selectedNodes).map((n) => n.tag_id);
     const sortCriteria = document.getElementById("sortCriteria").value;
-    const response = await fetch('/search', {
+    const response = await fetch('/dynotes/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: searchText, tags, password, sortCriteria })
@@ -697,7 +697,7 @@ async function updatePassword() {
     const newPassword = prompt("Enter new password:");
     if (!newPassword)
         return;
-    const response = await fetch('/change_password', {
+    const response = await fetch('/dynotes/change_password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ old_password: oldPassword, new_password: newPassword })
@@ -709,7 +709,6 @@ function toggleLoadingAnimation(isSerarching) {
     const loadingIndicator = document.getElementById("loadingIndicator");
     if (loadingIndicator)
         loadingIndicator.style.display = isSerarching ? 'block' : 'none';
-    console.log("yeah we be searchin", isSerarching, loadingIndicator);
 }
 function displaySearchResults(results) {
     const resultsContainer = document.getElementById("results");
@@ -807,6 +806,7 @@ function wrapTags(tags, maxLineLength = 30) {
     }
     return lines;
 }
+// lol why dont i just import something. eh. this is fun!
 function parseMarkdown(text) {
     // Headers
     text = text.replace(/^(#{1,6})\s+(.+)$/gm, (match, hashes, content) => {
@@ -816,10 +816,17 @@ function parseMarkdown(text) {
     // Bold and Italic
     text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
     text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-    // Lists
-    text = text.replace(/(?:^|\n)(?:- (.+)(?:\n|$))+/gm, (match) => {
+    // Checkboxes and Lists
+    text = text.replace(/(?:^|\n)(?:- (\[[ x]\])?\s*(.+)(?:\n|$))+/gm, (match) => {
         const items = match.trim().split('\n');
-        const listItems = items.map(item => `<li>${item.substring(2)}</li>`).join('');
+        const listItems = items.map(item => {
+            const checkboxMatch = item.match(/- (\[[ x]\])\s*(.+)/);
+            if (checkboxMatch) {
+                const checked = checkboxMatch[1] === '[x]' ? 'checked' : '';
+                return `<li><input type="checkbox" ${checked} disabled> ${checkboxMatch[2]}</li>`;
+            }
+            return `<li>${item.substring(2)}</li>`;
+        }).join('');
         return `<ul>${listItems}</ul>`;
     });
     // Line thing or whatever
@@ -929,7 +936,7 @@ function openEditNoteModal(note) {
 }
 async function deleteNote(noteId) {
     try {
-        const response = await fetch('/delete_note', {
+        const response = await fetch('/dynotes/delete_note', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ noteId })
@@ -966,7 +973,7 @@ async function saveEditedNote(noteId) {
     const selectedTags = Array.from(document.querySelectorAll('#editNoteTagSelection input[type="checkbox"]:checked'))
         .map((checkbox) => parseInt(checkbox.value, 10));
     try {
-        const response = await fetch('/edit_note', {
+        const response = await fetch('/dynotes/edit_note', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ noteId, text, author, rating, source, visibility, tags: selectedTags })
@@ -1014,13 +1021,13 @@ function initRating(containerId) {
 // Initialize star ratings
 initRating('noteRating');
 initRating('noteVisibility');
-// Make sure to include or update the markdownToHtml function if it's not already present
 function markdownToHtml(markdown) {
+    return parseMarkdown(markdown);
     return markdown
         .replace(/^(#{1,6})\s+(.+)$/gm, (match, hashes, content) => {
-        const level = hashes.length;
-        return `<h${level}>${content}</h${level}>`;
-    })
+            const level = hashes.length;
+            return `<h${level}>${content}</h${level}>`;
+        })
         .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
         .replace(/\*([^*]+)\*/g, '<em>$1</em>')
         .replace(/`([^`]+)`/g, '<code>$1</code>')
@@ -1129,7 +1136,7 @@ async function addNote() {
     }
     console.log("Sending note data:", { text, author, rating, source, visibility, tags });
     try {
-        const response = await fetch('/add_note', {
+        const response = await fetch('/dynotes/add_note', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text, author, rating, source, visibility, tags })
@@ -1240,7 +1247,7 @@ class MMRComparison {
         const tags = Array.from(window.tagGraph.selectedNodes).map((n) => n.tag_id);
         const password = document.getElementById("searchPassword").value;
         try {
-            const response = await fetch('/get_mmr_notes', {
+            const response = await fetch('/dynotes/get_mmr_notes', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ tags, password })
@@ -1267,27 +1274,27 @@ class MMRComparison {
         this.clearComparison();
         const tags = Array.from(window.tagGraph.selectedNodes).map((n) => n.tag_id);
         const password = document.getElementById("searchPassword").value;
-        fetch('/get_mmr_notes', {
+        fetch('/dynotes/get_mmr_notes', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ tags, password })
         })
             .then(response => response.json())
             .then(notes => {
-            if (notes.length === 2) {
-                currentMMRNotes = notes;
-                this.displayNotes(notes);
-                document.getElementById('mmrModal').style.display = 'block';
-            }
-            else {
-                alert('Not enough notes found for comparison. Try selecting different tags.');
-            }
-            isComparisonInProgress = false;
-        })
+                if (notes.length === 2) {
+                    currentMMRNotes = notes;
+                    this.displayNotes(notes);
+                    document.getElementById('mmrModal').style.display = 'block';
+                }
+                else {
+                    alert('Not enough notes found for comparison. Try selecting different tags.');
+                }
+                isComparisonInProgress = false;
+            })
             .catch(error => {
-            console.error('Error fetching MMR notes:', error);
-            isComparisonInProgress = false;
-        });
+                console.error('Error fetching MMR notes:', error);
+                isComparisonInProgress = false;
+            });
     }
     displayNotes(notes) {
         notes.forEach((note, index) => {
@@ -1308,39 +1315,39 @@ class MMRComparison {
         this.pendingComparison = true;
         const winnerId = currentMMRNotes[winnerIndex].note_id;
         const loserId = currentMMRNotes[1 - winnerIndex].note_id;
-        fetch('/update_mmr', {
+        fetch('/dynotes/update_mmr', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ winner_id: winnerId, loser_id: loserId })
         })
             .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(result => {
-            if (result.success) {
-                this.showComparisonResult(winnerIndex, result.winner_change, result.loser_change, result.winner_id, result.loser_id);
-                // Preemptively load more comparisons if the queue is getting low
-                if (this.fastModeCheckbox.checked) {
-                    this.hideToastAndContinue();
+                if (result.success) {
+                    this.showComparisonResult(winnerIndex, result.winner_change, result.loser_change, result.winner_id, result.loser_id);
+                    // Preemptively load more comparisons if the queue is getting low
+                    if (this.fastModeCheckbox.checked) {
+                        this.hideToastAndContinue();
+                    }
+                    if (this.comparisonQueue.length < 3) {
+                        this.loadMoreComparisons();
+                    }
                 }
-                if (this.comparisonQueue.length < 3) {
-                    this.loadMoreComparisons();
+                else {
+                    console.error('Failed to update MMR:', result.error);
+                    alert('Failed to update MMR. Please try again.');
+                    this.pendingComparison = false;
                 }
-            }
-            else {
-                console.error('Failed to update MMR:', result.error);
-                alert('Failed to update MMR. Please try again.');
-                this.pendingComparison = false;
-            }
-        })
+            })
             .catch(error => {
-            console.error('Error updating MMR:', error);
-            alert('An error occurred while updating MMR. Please try again.');
-            this.pendingComparison = false;
-        });
+                console.error('Error updating MMR:', error);
+                alert('An error occurred while updating MMR. Please try again.');
+                this.pendingComparison = false;
+            });
     }
     updateMMR_old(winnerIndex) {
         if (isComparisonInProgress)
@@ -1348,32 +1355,32 @@ class MMRComparison {
         isComparisonInProgress = true;
         const winnerId = currentMMRNotes[winnerIndex].note_id;
         const loserId = currentMMRNotes[1 - winnerIndex].note_id;
-        fetch('/update_mmr', {
+        fetch('/dynotes/update_mmr', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ winner_id: winnerId, loser_id: loserId })
         })
             .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(result => {
-            if (result.success) {
-                this.showComparisonResult(winnerIndex, result.winner_change, result.loser_change, result.winner_id, result.loser_id);
-            }
-            else {
-                console.error('Failed to update MMR:', result.error);
-                alert('Failed to update MMR. Please try again.');
-            }
-            isComparisonInProgress = false;
-        })
+                if (result.success) {
+                    this.showComparisonResult(winnerIndex, result.winner_change, result.loser_change, result.winner_id, result.loser_id);
+                }
+                else {
+                    console.error('Failed to update MMR:', result.error);
+                    alert('Failed to update MMR. Please try again.');
+                }
+                isComparisonInProgress = false;
+            })
             .catch(error => {
-            console.error('Error updating MMR:', error);
-            alert('An error occurred while updating MMR. Please try again.');
-            isComparisonInProgress = false;
-        });
+                console.error('Error updating MMR:', error);
+                alert('An error occurred while updating MMR. Please try again.');
+                isComparisonInProgress = false;
+            });
     }
     showComparisonResult(winnerIndex, winnerChange, loserChange, winnerId, loserId) {
         if (this.toastTimeout !== null) {

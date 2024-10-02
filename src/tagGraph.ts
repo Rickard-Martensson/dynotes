@@ -962,7 +962,9 @@ function wrapTags(tags: string, maxLineLength: number = 30): string[] {
     return lines;
 }
 
+// lol why dont i just import something. eh. this is fun!
 function parseMarkdown(text: string): string {
+
     // Headers
     text = text.replace(/^(#{1,6})\s+(.+)$/gm, (match, hashes, content) => {
         const level = hashes.length;
@@ -973,10 +975,17 @@ function parseMarkdown(text: string): string {
     text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
     text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
 
-    // Lists
-    text = text.replace(/(?:^|\n)(?:- (.+)(?:\n|$))+/gm, (match) => {
+    // Checkboxes and Lists
+    text = text.replace(/(?:^|\n)(?:- (\[[ x]\])?\s*(.+)(?:\n|$))+/gm, (match) => {
         const items = match.trim().split('\n');
-        const listItems = items.map(item => `<li>${item.substring(2)}</li>`).join('');
+        const listItems = items.map(item => {
+            const checkboxMatch = item.match(/- (\[[ x]\])\s*(.+)/);
+            if (checkboxMatch) {
+                const checked = checkboxMatch[1] === '[x]' ? 'checked' : '';
+                return `<li><input type="checkbox" ${checked} disabled> ${checkboxMatch[2]}</li>`;
+            }
+            return `<li>${item.substring(2)}</li>`;
+        }).join('');
         return `<ul>${listItems}</ul>`;
     });
 
@@ -1200,8 +1209,8 @@ function initRating(containerId: string): void {
 initRating('noteRating');
 initRating('noteVisibility');
 
-// Make sure to include or update the markdownToHtml function if it's not already present
 function markdownToHtml(markdown: string): string {
+    return parseMarkdown(markdown);
     return markdown
         .replace(/^(#{1,6})\s+(.+)$/gm, (match, hashes, content) => {
             const level = hashes.length;

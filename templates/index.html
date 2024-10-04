@@ -39,6 +39,18 @@
         <center>DyNotes</center>
     </h1>
 
+    <button id="toggleFullscreen" class="fullscreen-btn" title="Toggle Fullscreen">⛶</button>
+    <!-- Move password update to a settings dropdown -->
+    <div class="settings-dropdown">
+        <button class="settings-btn">⚙️</button>
+        <div class="settings-content">
+
+            <input type="password" id="searchPassword" value="1234" placeholder="Enter password for higher visibility">
+            <button onclick="updatePassword()">Update Password</button>
+            <!-- <input type="password" id="passwordField" placeholder="Enter new password">
+            <button onclick="updatePassword()">Update Password</button> -->
+        </div>
+    </div>
     <div id="container">
         <div id="tagGraph"></div>
 
@@ -74,17 +86,7 @@
             </div>
         </div>
     </div>
-    <!-- Move password update to a settings dropdown -->
-    <div class="settings-dropdown">
-        <button class="settings-btn">⚙️</button>
-        <div class="settings-content">
 
-            <input type="password" id="searchPassword" value="1234" placeholder="Enter password for higher visibility">
-            <button onclick="updatePassword()">Update Password</button>
-            <!-- <input type="password" id="passwordField" placeholder="Enter new password">
-            <button onclick="updatePassword()">Update Password</button> -->
-        </div>
-    </div>
     <div>
         <p>Selected Tags: <span id="selectedNoteTags"></span></p>
     </div>

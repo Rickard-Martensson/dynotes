@@ -149,3 +149,25 @@ button.normal:hover {
     padding: 10px;
     margin-bottom: 10px;
 } */
+
+
+
+
+/* Replace the fullscreen-dropdown styles with these */
+.fullscreen-btn {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #414141;
+    border-radius: 5px;
+}

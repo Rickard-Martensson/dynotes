@@ -1778,6 +1778,23 @@ class MMRComparison {
             areRatingsVisible ? 'Hide Ratings' : 'Show Ratings';
     }
 }
+function initializeFullscreenToggle(): void {
+    const toggleFullscreenBtn = document.getElementById('toggleFullscreen');
+    if (toggleFullscreenBtn) {
+        toggleFullscreenBtn.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.error(`Error attempting to enable fullscreen: ${err.message}`);
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        });
+    }
+}
+
 // Initialize the graph when the DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
     (window as any).tagGraph = new TagGraph("tagGraph");
@@ -1786,6 +1803,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Add event listener for the "Add Note" button
     const showAddNoteBtn = document.getElementById('showAddNoteBtn');
     const addNoteSection = document.getElementById('addNoteSection');
+    initializeFullscreenToggle();
 
     if (showAddNoteBtn && addNoteSection) {
         showAddNoteBtn.addEventListener('click', () => {

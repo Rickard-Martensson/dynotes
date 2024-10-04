@@ -585,9 +585,17 @@ class TagGraph {
                 (l.source === targetNode && l.target === draggedNode)
             );
             if (existingRelationship) {
-                this.infoText.text(`Release to remove relationship between "${targetNode.name}" and "${draggedNode.name}"`);
+                toastManager.showToast(`Release to remove relationship`, {
+                    details: `"${targetNode.name}" and "${draggedNode.name}"`,
+                    duration: 1000
+                });
+                // this.infoText.text(`Release to remove relationship between "${targetNode.name}" and "${draggedNode.name}"`);
             } else {
-                this.infoText.text(`Release to create relationship: "${targetNode.name}" → "${draggedNode.name}"`);
+                toastManager.showToast(`Release to create relationship`, {
+                    details: `"${targetNode.name}" → "${draggedNode.name}"`,
+                    duration: 1000
+                });
+                // this.infoText.text(`Release to create relationship: "${targetNode.name}" → "${draggedNode.name}"`);
             }
         } else {
             this.infoText.text("");
@@ -1360,21 +1368,108 @@ async function addNote(): Promise<void> {
                 // (window as any).tagGraph.updateGraph();
                 // (window as any).tagGraph.updateSelectedTagsLists();
                 console.log("Note added successfully");
-                alert('Note added successfully!');
+                toastManager.showToast('Note added successfully!', { duration: 3000 });
+                // alert('Note added successfully!');
             } else {
                 console.error('Failed to add note:', result.error);
-                alert('Failed to add note: ' + result.error);
+                // alert('Failed to add note: ' + result.error);
+                toastManager.showToast('Failed to add note', { isError: true, details: result.error, duration: 5000 });
             }
         } else {
             const errorData = await response.json();
             console.error('Failed to add note:', errorData.error);
-            alert('Failed to add note: ' + errorData.error);
+            toastManager.showToast('Failed to add note', { isError: true, details: errorData.error, duration: 5000 });
+
+            // alert('Failed to add note: ' + errorData.error);
         }
     } catch (error) {
         console.error('Error adding note:', error);
-        alert('Error adding note: ' + error);
+        toastManager.showToast('Error adding note', { isError: true, details: String(error), duration: 5000 });
+        // alert('Error adding note: ' + error);
     }
 }
+
+class ToastManager {
+    private container: HTMLElement;
+    private activeToasts: Map<string, { element: HTMLElement, timer: number }> = new Map();
+
+    constructor() {
+        this.container = document.getElementById('toastContainer') as HTMLElement;
+        if (!this.container) {
+            this.container = document.createElement('div');
+            this.container.id = 'toastContainer';
+            this.container.className = 'toast-container';
+            document.body.appendChild(this.container);
+        }
+    }
+
+    showToast(message: string, options: {
+        duration?: number,
+        isError?: boolean,
+        details?: string
+    } = {}): void {
+        const { duration = 3000, isError = false, details } = options;
+        const key = `${message}-${details || ''}`;
+
+        if (this.activeToasts.has(key)) {
+            const existingToast = this.activeToasts.get(key)!;
+            clearTimeout(existingToast.timer);
+            existingToast.timer = this.setToastTimer(existingToast.element, key, duration);
+            return;
+        }
+
+        const toast = this.createToastElement(message, isError, details);
+        this.container.appendChild(toast);
+
+        // Trigger reflow to enable transition
+        toast.offsetHeight;
+        toast.classList.add('show');
+
+        const timer = this.setToastTimer(toast, key, duration);
+        this.activeToasts.set(key, { element: toast, timer });
+    }
+
+    private createToastElement(message: string, isError: boolean, details?: string): HTMLElement {
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+
+        const messageElement = document.createElement('div');
+        messageElement.className = 'toast-message';
+        messageElement.textContent = message;
+        toast.appendChild(messageElement);
+
+        if (details) {
+            const detailsElement = document.createElement('div');
+            detailsElement.className = 'toast-details';
+            detailsElement.textContent = details;
+            toast.appendChild(detailsElement);
+        }
+
+        if (isError) {
+            toast.classList.add('error');
+        }
+
+        return toast;
+    }
+
+    private setToastTimer(toast: HTMLElement, key: string, duration: number): number {
+        return window.setTimeout(() => {
+            toast.classList.add('remove');
+            toast.addEventListener('transitionend', () => {
+                if (toast.parentNode === this.container) {
+                    this.container.removeChild(toast);
+                }
+                this.activeToasts.delete(key);
+            }, { once: true });
+        }, duration);
+    }
+}
+
+// Initialize the ToastManager
+const toastManager = new ToastManager();
+
+// Example usage:
+toastManager.showToast('This is a test toast message');
 
 
 let currentMMRNotes: SearchResult[] = [];

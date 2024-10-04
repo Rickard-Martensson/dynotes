@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/noteForm.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/searchDisplay.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/modal.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/toastManager.css') }}">
 
     <style>
         #container {
@@ -31,6 +32,9 @@
 </head>
 
 <body>
+    <div id="toastManager" class="toast-manager">
+        <div id="toastContainer" class="toast-container"></div>
+    </div>
     <h1>
         <center>DyNotes</center>
     </h1>

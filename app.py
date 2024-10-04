@@ -13,6 +13,36 @@ DATABASE = "notes.db"
 PASSWORD_HASH = generate_password_hash("1234")  # Initial password
 
 
+# delete this
+@app.route("/export_tags_and_relationships", methods=["GET"])
+def export_tags_and_relationships():
+    db = get_db()
+
+    # Get all tags
+    cursor = db.execute("SELECT tag_id, name, readable_id FROM Tags")
+    tags = {row["tag_id"]: dict(row) for row in cursor.fetchall()}
+
+    # Get all relationships
+    cursor = db.execute("SELECT parent_tag_id, child_tag_id FROM TagRelationships")
+    relationships = cursor.fetchall()
+
+    # Build the hierarchy
+    for parent_id, child_id in relationships:
+        if "children" not in tags[parent_id]:
+            tags[parent_id]["children"] = []
+        tags[parent_id]["children"].append(tags[child_id])
+
+    # Filter out child tags from the top level
+    root_tags = {id: tag for id, tag in tags.items() if not any(id == rel[1] for rel in relationships)}
+
+    return jsonify(list(root_tags.values()))
+
+
+def get_visibility_level(password):
+    visibility_level = 5 if check_password_hash(PASSWORD_HASH, password) else 1
+    return visibility_level
+
+
 @app.route("/tags", methods=["GET"])
 def get_tags():
     db = get_db()
@@ -191,8 +221,8 @@ def get_mmr_notes():
     selected_tags = data.get("tags", [])
     password = data.get("password", "")
 
-    visibility_level = 5 if check_password_hash(PASSWORD_HASH, password) else 1
-
+    # visibility_level = 5 if check_password_hash(PASSWORD_HASH, password) else 1
+    visibility_level = get_visibility_level(password)
     # New base query that doesn't rely on tag selection
     base_query = """
     SELECT n.note_id, n.text, n.author, n.date, n.rating, n.source, n.visibility, n.mmr, n.mmr_matches,
@@ -236,60 +266,6 @@ def get_mmr_notes():
     ORDER BY RANDOM()
     LIMIT 2
     """
-
-    cursor = db.execute(query, params)
-    results = cursor.fetchall()
-
-    return jsonify([dict(row) for row in results])
-
-
-@app.route("/get_mmr_notes", methods=["POST"])
-def get_mmr_notes2():
-    db = get_db()
-    data = request.json
-    selected_tags = data.get("tags", [])
-    password = data.get("password", "")
-
-    visibility_level = 5 if check_password_hash(PASSWORD_HASH, password) else 1
-
-    query = """
-    WITH RECURSIVE
-    tag_hierarchy(root_id, descendant_id) AS (
-        SELECT tag_id, tag_id FROM Tags WHERE tag_id IN ({})
-        UNION
-        SELECT th.root_id, tr.child_tag_id
-        FROM tag_hierarchy th
-        JOIN TagRelationships tr ON th.descendant_id = tr.parent_tag_id
-    ),
-    matching_notes AS (
-        SELECT n.note_id
-        FROM Notes n
-        JOIN NoteTags nt ON n.note_id = nt.note_id
-        JOIN tag_hierarchy th ON nt.tag_id = th.descendant_id
-        GROUP BY n.note_id
-        HAVING COUNT(DISTINCT th.root_id) = ?
-    )
-    SELECT n.note_id, n.text, n.author, n.date, n.rating, n.source, n.visibility, n.mmr, n.mmr_matches,
-           GROUP_CONCAT(DISTINCT t.name) as tags
-    FROM Notes n
-    JOIN matching_notes mn ON n.note_id = mn.note_id
-    JOIN NoteTags nt ON n.note_id = nt.note_id
-    JOIN Tags t ON nt.tag_id = t.tag_id
-    WHERE n.visibility <= ?
-    GROUP BY n.note_id
-    ORDER BY RANDOM()
-    LIMIT 2
-    """
-
-    params = []
-    if selected_tags:
-        tag_placeholders = ",".join("?" for _ in selected_tags)
-        params.extend(selected_tags)
-    else:
-        tag_placeholders = "SELECT tag_id FROM Tags"
-
-    query = query.format(tag_placeholders)
-    params.extend([len(selected_tags), visibility_level])
 
     cursor = db.execute(query, params)
     results = cursor.fetchall()
@@ -381,7 +357,8 @@ def search():
     password = data.get("password", "")
     sort_criteria = data.get("sortCriteria", "stars-desc")  # Default sorting
 
-    visibility_level = 5 if check_password_hash(PASSWORD_HASH, password) else 1
+    # visibility_level = 5 if check_password_hash(PASSWORD_HASH, password) else 1
+    visibility_level = get_visibility_level(password)
 
     query = """
     WITH RECURSIVE
@@ -427,78 +404,6 @@ def search():
 
     sort_field, sort_order = sort_criteria.split("-")
     sort_mapping = {"stars": "n.rating", "date": "n.date", "visibility": "n.visibility", "mmr": "n.mmr"}  # Add this line
-    query += f" ORDER BY {sort_mapping[sort_field]} {'DESC' if sort_order == 'desc' else 'ASC'}"
-
-    app.logger.debug(f"Search query: {query}")
-    app.logger.debug(f"Search params: {params}")
-
-    cursor = db.execute(query, params)
-    results = cursor.fetchall()
-
-    filtered_results = [dict(row) for row in results if row["visibility"] <= visibility_level]
-
-    app.logger.debug(f"Filtered search results: {filtered_results}")
-
-    return jsonify(filtered_results)
-
-
-@app.route("/search", methods=["POST"])
-def search2():
-    db = get_db()
-    data = request.json
-    app.logger.debug(f"Search request data: {data}")
-    selected_tags = data.get("tags", [])
-    search_text = data.get("text", "")
-    password = data.get("password", "")
-    sort_criteria = data.get("sortCriteria", "stars-desc")  # Default sorting
-
-    visibility_level = 5 if check_password_hash(PASSWORD_HASH, password) else 1
-
-    query = """
-    WITH RECURSIVE
-    tag_hierarchy(root_id, descendant_id) AS (
-        SELECT tag_id, tag_id FROM Tags WHERE tag_id IN ({})
-        UNION
-        SELECT th.root_id, tr.child_tag_id
-        FROM tag_hierarchy th
-        JOIN TagRelationships tr ON th.descendant_id = tr.parent_tag_id
-    ),
-    matching_notes AS (
-        SELECT n.note_id
-        FROM Notes n
-        JOIN NoteTags nt ON n.note_id = nt.note_id
-        JOIN tag_hierarchy th ON nt.tag_id = th.descendant_id
-        GROUP BY n.note_id
-        HAVING COUNT(DISTINCT th.root_id) = ?
-    )
-    SELECT n.note_id, n.text, n.author, n.date, n.rating, n.source, n.visibility, n.mmr, n.mmr_matches,
-           GROUP_CONCAT(DISTINCT t.name) as tags
-
-    FROM Notes n
-    JOIN matching_notes mn ON n.note_id = mn.note_id
-    JOIN NoteTags nt ON n.note_id = nt.note_id
-    JOIN Tags t ON nt.tag_id = t.tag_id
-    WHERE n.visibility <= ?
-    """
-
-    params = []
-    if selected_tags:
-        tag_placeholders = ",".join("?" for _ in selected_tags)
-        params.extend(selected_tags)
-    else:
-        tag_placeholders = "SELECT tag_id FROM Tags"
-
-    query = query.format(tag_placeholders)
-    params.extend([len(selected_tags), visibility_level])
-
-    if search_text:
-        query += " AND n.text LIKE ?"
-        params.append(f"%{search_text}%")
-
-    query += " GROUP BY n.note_id"
-
-    sort_field, sort_order = sort_criteria.split("-")
-    sort_mapping = {"stars": "n.rating", "date": "n.date", "visibility": "n.visibility"}
     query += f" ORDER BY {sort_mapping[sort_field]} {'DESC' if sort_order == 'desc' else 'ASC'}"
 
     app.logger.debug(f"Search query: {query}")

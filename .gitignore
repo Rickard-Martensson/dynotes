@@ -12,3 +12,4 @@ tagGraph.js
 dontreadme.md
 migrate_mmr.py
 *.js
+/fetch_notes

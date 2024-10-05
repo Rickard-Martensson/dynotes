@@ -44,10 +44,19 @@
     <div class="settings-dropdown">
         <button class="settings-btn">⚙️</button>
         <div class="settings-content">
-            <input type="password" id="searchPassword" value="pw1" placeholder="Enter password for higher visibility">
-
+            <input type="password" id="searchPassword" value="pw5" placeholder="Enter password for higher visibility">
             <button id="updateGlobalPasswords">Update Global Passwords</button>
             <button id="generateTagPassword">Generate Tag Password</button>
+            <div id="statsContainer">
+                <h3>DyNotes Stats</h3>
+                <p>Total Notes: <span id="noteCount">Loading...</span></p>
+                <p>Total Tags: <span id="tagCount">Loading...</span></p>
+                <p>Tag Relationships: <span id="relationshipCount">Loading...</span></p>
+                <p>Average Note Rating: <span id="avgRating">Loading...</span></p>
+                <p>Visibility Distribution: <span id="visibilityDistribution">Loading...</span></p>
+                <p>Top 5 Tags: <span id="topTags">Loading...</span></p>
+                <p>Notes Added Last 7 Days: <span id="recentNotes">Loading...</span></p>
+            </div>
         </div>
     </div>
     <div id="container">

@@ -1,10 +1,13 @@
 # app.py
-from flask import Flask, render_template, request, jsonify
+import time
+from flask import Flask, render_template, request, jsonify, g
 import sqlite3
 from datetime import datetime
 import os
 import logging
 from werkzeug.security import check_password_hash, generate_password_hash
+
+from functools import lru_cache
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.DEBUG)
@@ -128,6 +131,60 @@ def get_visibility_level(password, tag_id=None):
     return 1  # Default visibility level
 
 
+@app.route("/get_stats", methods=["GET"])
+def get_stats():
+    db = get_db()
+    cursor = db.cursor()
+
+    # Get total number of notes
+    cursor.execute("SELECT COUNT(*) FROM Notes")
+    note_count = cursor.fetchone()[0]
+
+    # Get total number of tags
+    cursor.execute("SELECT COUNT(*) FROM Tags")
+    tag_count = cursor.fetchone()[0]
+
+    # Get number of tag relationships
+    cursor.execute("SELECT COUNT(*) FROM TagRelationships")
+    relationship_count = cursor.fetchone()[0]
+
+    # Get average note rating
+    cursor.execute("SELECT AVG(rating) FROM Notes")
+    avg_rating = cursor.fetchone()[0]
+
+    # Get number of notes for each visibility level
+    cursor.execute("SELECT visibility, COUNT(*) FROM Notes GROUP BY visibility ORDER BY visibility")
+    visibility_counts = dict(cursor.fetchall())
+
+    cursor.execute("SELECT COUNT(*) FROM Notes WHERE date >= ?", (int(time.time()) - 7 * 24 * 60 * 60,))
+    recent_notes = cursor.fetchone()[0]
+
+    cursor.execute(
+        """
+        SELECT Tags.name, COUNT(*) as usage_count
+        FROM NoteTags
+        JOIN Tags ON NoteTags.tag_id = Tags.tag_id
+        GROUP BY NoteTags.tag_id
+        ORDER BY usage_count DESC
+        LIMIT 5
+    """
+    )
+    top_tags = [{"name": row[0], "count": row[1]} for row in cursor.fetchall()]
+    # Get top 5 tags by usage
+
+    return jsonify(
+        {
+            "note_count": note_count,
+            "tag_count": tag_count,
+            "relationship_count": relationship_count,
+            "avg_rating": round(avg_rating, 2) if avg_rating else 0,
+            "visibility_counts": visibility_counts,
+            "top_tags": top_tags,
+            "recent_notes": recent_notes,
+        }
+    )
+
+
 @app.route("/tags", methods=["GET"])
 def get_tags():
     db = get_db()
@@ -237,9 +294,16 @@ def update_tag_relationships():
 
 
 def get_db():
-    db = sqlite3.connect(DATABASE)
-    db.row_factory = sqlite3.Row
-    return db
+    if "db" not in g:
+        g.db = sqlite3.connect(DATABASE)
+        g.db.row_factory = sqlite3.Row
+    return g.db
+
+
+@app.teardown_appcontext
+def close_db(error):
+    if hasattr(g, "db"):
+        g.db.close()
 
 
 def init_db():
@@ -432,8 +496,77 @@ def delete_note():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+# Optimized search function
 @app.route("/search", methods=["POST"])
 def search():
+    try:
+        db = get_db()
+        data = request.json
+
+        selected_tags = data.get("tags", [])
+        search_text = data.get("text", "")
+        password = data.get("password", "")
+        sort_criteria = data.get("sortCriteria", "stars-desc")
+
+        visibility_level = (
+            max([get_visibility_level(password, tag_id) for tag_id in selected_tags]) if selected_tags else get_visibility_level(password)
+        )
+
+        query = """
+        WITH RECURSIVE
+        tag_hierarchy(root_id, descendant_id) AS (
+            SELECT tag_id, tag_id FROM Tags WHERE tag_id IN ({})
+            UNION ALL
+            SELECT th.root_id, tr.child_tag_id
+            FROM tag_hierarchy th
+            JOIN TagRelationships tr ON th.descendant_id = tr.parent_tag_id
+        )
+        SELECT n.note_id, n.text, n.author, n.date, n.rating, n.source, n.visibility, n.mmr, n.mmr_matches,
+            GROUP_CONCAT(DISTINCT t.name) as tags
+        FROM Notes n
+        JOIN NoteTags nt ON n.note_id = nt.note_id
+        JOIN Tags t ON nt.tag_id = t.tag_id
+        WHERE n.visibility <= ?
+        AND (? = 0 OR n.note_id IN (
+            SELECT n.note_id
+            FROM Notes n
+            JOIN NoteTags nt ON n.note_id = nt.note_id
+            JOIN tag_hierarchy th ON nt.tag_id = th.descendant_id
+            GROUP BY n.note_id
+            HAVING COUNT(DISTINCT th.root_id) = ?
+        ))
+        """
+
+        params = [visibility_level, len(selected_tags), len(selected_tags)]
+
+        if selected_tags:
+            tag_placeholders = ",".join("?" for _ in selected_tags)
+            query = query.format(tag_placeholders)
+            params = selected_tags + params
+        else:
+            query = query.format("SELECT tag_id FROM Tags")
+
+        if search_text:
+            query += " AND n.text LIKE ?"
+            params.append(f"%{search_text}%")
+
+        query += " GROUP BY n.note_id"
+
+        sort_field, sort_order = sort_criteria.split("-")
+        sort_mapping = {"stars": "n.rating", "date": "n.date", "visibility": "n.visibility", "mmr": "n.mmr"}
+        query += f" ORDER BY {sort_mapping[sort_field]} {'DESC' if sort_order == 'desc' else 'ASC'}"
+
+        cursor = db.execute(query, params)
+        results = cursor.fetchall()
+
+        return jsonify([dict(row) for row in results])
+    except Exception as e:
+        app.logger.error(f"Error in search: {str(e)}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/search2", methods=["POST"])
+def search2():
     try:
         db = get_db()
         data = request.json
@@ -547,4 +680,4 @@ def add_note():
 
 if __name__ == "__main__":
     init_db()
-    app.run(debug=True)
+    app.run(debug=False)

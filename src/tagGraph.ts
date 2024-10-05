@@ -23,6 +23,9 @@ interface Link {
     target: Tag;
 }
 
+const IS_PROD = true
+const fetchpath = IS_PROD ? "/dynotes" : "";
+
 class TagGraph {
     private container: HTMLElement;
     private svg: d3.Selection<SVGSVGElement, unknown, null, undefined>;
@@ -62,7 +65,7 @@ class TagGraph {
     };
     private static readonly GRAPH_HEIGHT = 800;
 
-    private static readonly NODE_SIZES = [12, 10, 8];  // Sizes for generations 0-4+
+    private static readonly NODE_SIZES = [15, 13, 11, 9];  // Sizes for generations 0-4+
 
     constructor(containerId: string) {
         this.updateNodeMenu()
@@ -75,17 +78,24 @@ class TagGraph {
         this.nodeMenu = document.getElementById('nodeMenu')!;
         document.getElementById('closeNodeMenu')!.addEventListener('click', () => this.hideNodeMenu());
 
+        const padding = 10; // Padding from the edges
 
         this.svg = d3.select(this.container).append("svg")
             .attr("width", "100%")
             .attr("height", TagGraph.GRAPH_HEIGHT + "px");
         this.simulation = d3.forceSimulation<Tag>()
             .force("link", d3.forceLink<Tag, Link>().id(d => d.tag_id.toString()).distance(this.getLinkDistance.bind(this)))
-            .force("charge", d3.forceManyBody().strength(-200))
+            .force("charge", d3.forceManyBody().strength(-150))
             .force("center", d3.forceCenter(this.container.clientWidth / 2, TagGraph.GRAPH_HEIGHT / 2))
             .force("collision", d3.forceCollide().radius(20))
             .force("x", d3.forceX(this.container.clientWidth / 2).strength(0.05))
-            .force("y", d3.forceY(250).strength(0.05));
+            .force("y", d3.forceY(250).strength(0.05))
+            .force("bound", () => {
+                for (let node of this.simulation.nodes()) {
+                    node.x = Math.max(padding, Math.min(this.container.clientWidth - padding, node.x!));
+                    node.y = Math.max(padding, Math.min(TagGraph.GRAPH_HEIGHT - padding, node.y!));
+                }
+            });
         this.nodes = [];
         this.links = [];
         this.draggedNode = null;
@@ -152,7 +162,7 @@ class TagGraph {
         }
 
         try {
-            const response = await fetch('/delete_tag', {
+            const response = await fetch(fetchpath + '/delete_tag', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ tag_id: tagId })
@@ -194,8 +204,8 @@ class TagGraph {
 
     async loadData(): Promise<void> {
         const [tagsResponse, relationshipsResponse] = await Promise.all([
-            fetch('/tags'),
-            fetch('/tag_relationships')
+            fetch(fetchpath + '/tags'),
+            fetch(fetchpath + '/tag_relationships')
         ]);
         const tags: Tag[] = await tagsResponse.json();
         const relationships: { parent_tag_id: number, child_tag_id: number }[] = await relationshipsResponse.json();
@@ -233,6 +243,9 @@ class TagGraph {
         const baseDistance = 100;
         const minDistance = 20;
         const sourceGeneration = link.source.generation || 0;
+
+        const linkdists = [90, 70, 50, 30];
+        return linkdists[Math.min(sourceGeneration, 3)]
         return Math.max(baseDistance - sourceGeneration * 40, minDistance);
     }
 
@@ -275,6 +288,8 @@ class TagGraph {
 
     drag(): d3.DragBehavior<SVGGElement, Tag, Tag | d3.SubjectPosition> {
         const timeToWiggle = 750;
+        let dragTimer: d3.Timer | null = null;
+        let targetNode: Tag | null = null;
         return d3.drag<SVGGElement, Tag>()
             .on("start", (event: d3.D3DragEvent<SVGGElement, Tag, Tag>, d: Tag) => {
                 this.isDragging = false;
@@ -289,12 +304,19 @@ class TagGraph {
                     .attr("fill", TagGraph.COLORS.NODE_STROKE);
 
                 // Start the hold timer
+                console.log("starting timer:")
+
                 this.holdTimer = window.setTimeout(() => {
                     this.isHoldReady = true;
                     this.startNodeWiggle(event.sourceEvent.target as Element);
                     // select node if you hold it for .5 sec
 
 
+                    dragTimer = d3.timer(() => {
+                        if (this.draggedNode && this.isHoldReady) {
+                            this.updateInfoText(d, targetNode);
+                        }
+                    });
                     this.freezeAllNodes()
                 }, timeToWiggle);
             })
@@ -311,17 +333,21 @@ class TagGraph {
                 d.fx = event.x;
                 d.fy = event.y;
                 if (!event.active) this.simulation.alpha(0.3).restart();
-                const targetNode = this.getNodeAtPosition(event.x, event.y, d);
+                targetNode = this.getNodeAtPosition(event.x, event.y, d);
 
                 this.svg.selectAll<SVGCircleElement, Tag>(".node circle")
                     .attr("stroke", node => node === targetNode && node !== d ? TagGraph.COLORS.NODE_STROKE : null)
                     .attr("stroke-width", node => node === targetNode && node !== d ? 3 : null);
-                this.updateInfoText(d, targetNode);
+                // this.updateInfoText(d, targetNode);
             })
             .on("end", (event: d3.D3DragEvent<SVGGElement, Tag, Tag>, d: Tag) => {
                 if (this.holdTimer) {
                     clearTimeout(this.holdTimer);
                     this.holdTimer = null;
+                }
+                if (dragTimer) {
+                    dragTimer.stop();
+                    dragTimer = null;
                 }
                 this.stopNodeWiggle(event.sourceEvent.target as Element);
 
@@ -482,7 +508,7 @@ class TagGraph {
     async renameNode(): Promise<void> {
         const newName = (document.getElementById('nodeName') as HTMLInputElement).value;
         if (this.lastSelectedNode && newName !== this.lastSelectedNode.name) {
-            const response = await fetch('/rename_tag', {
+            const response = await fetch(fetchpath + '/rename_tag', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ tag_id: this.lastSelectedNode.tag_id, new_name: newName })
@@ -629,7 +655,7 @@ class TagGraph {
     async createRelationship(parentNode: Tag, childNode: Tag): Promise<void> {
         const selectedNodesBefore = new Set(this.selectedNodes);
 
-        const response = await fetch('/update_tag_relationships', {
+        const response = await fetch(fetchpath + '/update_tag_relationships', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ parent_id: parentNode.tag_id, child_id: childNode.tag_id })
@@ -658,7 +684,7 @@ class TagGraph {
     async removeRelationship(relationship: Link): Promise<void> {
         const selectedNodesBefore = new Set(this.selectedNodes);
 
-        const response = await fetch('/remove_tag_relationship', {
+        const response = await fetch(fetchpath + '/remove_tag_relationship', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ parent_id: relationship.source.tag_id, child_id: relationship.target.tag_id })
@@ -707,7 +733,7 @@ class TagGraph {
         const password = (document.getElementById("searchPassword") as HTMLInputElement).value;
         const tags = Array.from(this.selectedNodes).map(n => n.tag_id);
 
-        fetch('/search', {
+        fetch(fetchpath + '/search', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text: searchText, tags, password })
@@ -783,7 +809,7 @@ async function addTag(): Promise<void> {
 
     const readable_id = generateReadableId(name);
 
-    const response = await fetch('/add_tag', {
+    const response = await fetch(fetchpath + '/add_tag', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, readable_id })
@@ -798,12 +824,13 @@ async function addTag(): Promise<void> {
 }
 
 async function searchNotes(): Promise<void> {
+    toggleLoadingAnimation(true);
     const searchText = (document.getElementById("searchText") as HTMLInputElement).value;
     const password = (document.getElementById("searchPassword") as HTMLInputElement).value;
     const tags = Array.from((window as any).tagGraph.selectedNodes as Set<Tag>).map((n: Tag) => n.tag_id);
     const sortCriteria = (document.getElementById("sortCriteria") as HTMLInputElement).value;
 
-    const response = await fetch('/search', {
+    const response = await fetch(fetchpath + '/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: searchText, tags, password, sortCriteria })
@@ -812,6 +839,7 @@ async function searchNotes(): Promise<void> {
     if (response.ok) {
         const results = await response.json();
         displaySearchResults(results);
+        toggleLoadingAnimation(false);
     } else {
         console.error('Failed to search notes');
     }
@@ -841,7 +869,7 @@ async function updateGlobalPasswords(): Promise<void> {
     }
 
     try {
-        const response = await fetch('/update_global_passwords', {
+        const response = await fetch(fetchpath + '/update_global_passwords', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ vis1: vis1Password, vis3: vis3Password, vis5: vis5Password })
@@ -881,7 +909,7 @@ async function handleGenerateTagPassword(): Promise<void> {
     }
 
     try {
-        const response = await fetch('/generate_tag_password', {
+        const response = await fetch(fetchpath + '/generate_tag_password', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1025,7 +1053,7 @@ function isTallMode(): boolean {
 
 async function generateTagPassword(tagId: number, maxVisibility: number = 3): Promise<string | null> {
     try {
-        const response = await fetch('/generate_tag_password', {
+        const response = await fetch(fetchpath + '/generate_tag_password', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ tag_id: tagId, max_visibility: maxVisibility })
@@ -1214,7 +1242,7 @@ function openEditNoteModal(note: SearchResult): void {
 
 async function deleteNote(noteId: number): Promise<void> {
     try {
-        const response = await fetch('/delete_note', {
+        const response = await fetch(fetchpath + '/delete_note', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ noteId })
@@ -1254,7 +1282,7 @@ async function saveEditedNote(noteId: number): Promise<void> {
         .map((checkbox) => parseInt((checkbox as HTMLInputElement).value, 10));
 
     try {
-        const response = await fetch('/edit_note', {
+        const response = await fetch(fetchpath + '/edit_note', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ noteId, text, author, rating, source, visibility, tags: selectedTags })
@@ -1428,7 +1456,7 @@ async function addNote(): Promise<void> {
     console.log("Sending note data:", { text, author, rating, source, visibility, tags });
 
     try {
-        const response = await fetch('/add_note', {
+        const response = await fetch(fetchpath + '/add_note', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text, author, rating, source, visibility, tags })
@@ -1461,6 +1489,32 @@ async function addNote(): Promise<void> {
         toastManager.showToast('Error adding note', { isError: true, details: String(error), duration: 5000 });
         // alert('Error adding note: ' + error);
     }
+}
+
+function updateStats(): void {
+    fetch(fetchpath + '/get_stats')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('noteCount')!.textContent = data.note_count.toString();
+            document.getElementById('tagCount')!.textContent = data.tag_count.toString();
+            document.getElementById('relationshipCount')!.textContent = data.relationship_count.toString();
+            document.getElementById('avgRating')!.textContent = data.avg_rating.toString();
+
+
+            // Format visibility distribution
+            const visibilityDist = Object.entries(data.visibility_counts)
+                .map(([level, count]) => `${getVisibilityEmoji(+level)}(${level}): ${count}`)
+                .join(', ');
+            document.getElementById('visibilityDistribution')!.textContent = visibilityDist;
+
+            const topTags = data.top_tags
+                .map((tag: { name: string; count: number; }) => `${tag.name} (${tag.count})`)
+                .join(', ');
+            document.getElementById('topTags')!.textContent = topTags;
+            document.getElementById('recentNotes')!.textContent = data.recent_notes.toString();
+
+        })
+        .catch(error => console.error('Error fetching stats:', error));
 }
 
 class ToastManager {
@@ -1637,7 +1691,7 @@ class MMRComparison {
         const password = (document.getElementById("searchPassword") as HTMLInputElement).value;
 
         try {
-            const response = await fetch('/get_mmr_notes', {
+            const response = await fetch(fetchpath + '/get_mmr_notes', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ tags, password })
@@ -1663,7 +1717,7 @@ class MMRComparison {
         const tags = Array.from((window as any).tagGraph.selectedNodes as Set<Tag>).map((n: Tag) => n.tag_id);
         const password = (document.getElementById("searchPassword") as HTMLInputElement).value;
 
-        fetch('/get_mmr_notes', {
+        fetch(fetchpath + '/get_mmr_notes', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ tags, password })
@@ -1706,7 +1760,7 @@ class MMRComparison {
         const winnerId = currentMMRNotes[winnerIndex].note_id;
         const _loserId = currentMMRNotes[1 - winnerIndex].note_id;
 
-        fetch('/update_mmr', {
+        fetch(fetchpath + '/update_mmr', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ winner_id: winnerId, loser_id: _loserId })
@@ -1853,6 +1907,7 @@ document.addEventListener("DOMContentLoaded", () => {
             showAddNoteBtn.textContent = addNoteSection.style.display === 'none' ? 'Add Note ▼' : 'Hide Add Note ▲';
         });
     }
+    updateStats();
 
     const closeAddNoteBtn = document.getElementById('closeAddNoteBtn');
     if (closeAddNoteBtn) {

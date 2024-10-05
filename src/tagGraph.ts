@@ -24,7 +24,6 @@ interface Link {
 }
 
 class TagGraph {
-    private maxGeneration: number = 0;
     private container: HTMLElement;
     private svg: d3.Selection<SVGSVGElement, unknown, null, undefined>;
     private simulation: d3.Simulation<Tag, Link>;
@@ -221,7 +220,6 @@ class TagGraph {
     calculateGenerations(): void {
         const rootNodes = this.nodes.filter(node => !this.links.some(link => link.target === node));
         rootNodes.forEach(node => this.setGeneration(node, 0));
-        this.maxGeneration = Math.max(...this.nodes.map(n => n.generation || 0));
     }
 
     setGeneration(node: Tag, generation: number): void {
@@ -1706,12 +1704,12 @@ class MMRComparison {
         this.pendingComparison = true;
 
         const winnerId = currentMMRNotes[winnerIndex].note_id;
-        const loserId = currentMMRNotes[1 - winnerIndex].note_id;
+        const _loserId = currentMMRNotes[1 - winnerIndex].note_id;
 
         fetch('/update_mmr', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ winner_id: winnerId, loser_id: loserId })
+            body: JSON.stringify({ winner_id: winnerId, loser_id: _loserId })
         })
             .then(response => {
                 if (!response.ok) {
@@ -1742,41 +1740,9 @@ class MMRComparison {
             });
     }
 
-    private updateMMR_old(winnerIndex: number): void {
-        if (isComparisonInProgress) return;
-        isComparisonInProgress = true;
 
-        const winnerId = currentMMRNotes[winnerIndex].note_id;
-        const loserId = currentMMRNotes[1 - winnerIndex].note_id;
 
-        fetch('/update_mmr', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ winner_id: winnerId, loser_id: loserId })
-        })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(result => {
-                if (result.success) {
-                    this.showComparisonResult(winnerIndex, result.winner_change, result.loser_change, result.winner_id, result.loser_id);
-                } else {
-                    console.error('Failed to update MMR:', result.error);
-                    alert('Failed to update MMR. Please try again.');
-                }
-                isComparisonInProgress = false;
-            })
-            .catch(error => {
-                console.error('Error updating MMR:', error);
-                alert('An error occurred while updating MMR. Please try again.');
-                isComparisonInProgress = false;
-            });
-    }
-
-    private showComparisonResult(winnerIndex: number, winnerChange: number, loserChange: number, winnerId: number, loserId: number): void {
+    private showComparisonResult(_winnerIndex: number, winnerChange: number, loserChange: number, winnerId: number, _loserId: number): void {
         if (this.toastTimeout !== null) {
             clearTimeout(this.toastTimeout);
         }

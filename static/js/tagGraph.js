@@ -2,7 +2,6 @@
 // tagGraph.ts
 // import * as d3 from 'd3';
 class TagGraph {
-    maxGeneration = 0;
     container;
     svg;
     simulation;
@@ -45,8 +44,6 @@ class TagGraph {
         // Apply styles to the container
         this.container.style.backgroundColor = TagGraph.COLORS.BACKGROUND;
         this.container.style.border = `2px solid ${TagGraph.COLORS.BORDER}`;
-        // this.container.style.borderRadius = '10px';
-        // this.container.style.overflow = 'hidden';
         this.nodeMenu = document.getElementById('nodeMenu');
         document.getElementById('closeNodeMenu').addEventListener('click', () => this.hideNodeMenu());
         this.svg = d3.select(this.container).append("svg")
@@ -54,7 +51,6 @@ class TagGraph {
             .attr("height", TagGraph.GRAPH_HEIGHT + "px");
         this.simulation = d3.forceSimulation()
             .force("link", d3.forceLink().id(d => d.tag_id.toString()).distance(this.getLinkDistance.bind(this)))
-            // .force("link", d3.forceLink<Tag, Link>().id(d => d.tag_id.toString()).distance(100))
             .force("charge", d3.forceManyBody().strength(-200))
             .force("center", d3.forceCenter(this.container.clientWidth / 2, TagGraph.GRAPH_HEIGHT / 2))
             .force("collision", d3.forceCollide().radius(20))
@@ -178,7 +174,6 @@ class TagGraph {
     calculateGenerations() {
         const rootNodes = this.nodes.filter(node => !this.links.some(link => link.target === node));
         rootNodes.forEach(node => this.setGeneration(node, 0));
-        this.maxGeneration = Math.max(...this.nodes.map(n => n.generation || 0));
     }
     setGeneration(node, generation) {
         node.generation = generation;
@@ -343,8 +338,6 @@ class TagGraph {
             }
         });
     }
-    addmeme() {
-    }
     addDescendants(node, relatives) {
         this.links.forEach(link => {
             if (link.source === node && !relatives.has(link.target)) {
@@ -356,7 +349,6 @@ class TagGraph {
     updateNodeMenu() {
         if (!this.lastSelectedNode) {
             document.getElementById('nodeMenu').style.display = 'none';
-            // document.getElementById('nodeMenu')!.style.display = 'block';
             return;
         }
         document.getElementById('nodeMenu').style.display = 'block';
@@ -516,7 +508,7 @@ class TagGraph {
             }
         }
         else {
-            this.infoText.text("");
+            // this.infoText.text("");
         }
     }
     async handleDragEnd(event, draggedNode) {
@@ -935,60 +927,6 @@ function parseMarkdown(text) {
             .replace(/\n/g, '<br>');
     }
 }
-function parseMarkdown_better(text) {
-    // Headers
-    text = text.replace(/^(#{1,6})\s+(.+)$/gm, (match, hashes, content) => {
-        const level = hashes.length;
-        return `<h${level}>${content}</h${level}>`;
-    });
-    // Bold and Italic
-    text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-    text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-    text = text.replace(/~~([^~]+)~~/g, '<del>$1</del>'); // Strikethrough
-    // Links
-    text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
-    // Images
-    text = text.replace(/!\[([^\]]+)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">');
-    // Code blocks
-    text = text.replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>');
-    // Inline code
-    text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
-    // Blockquotes
-    text = text.replace(/^>\s+(.+)$/gm, '<blockquote>$1</blockquote>');
-    // Unordered lists
-    text = text.replace(/(?:^|\n)(?:- (\[[ x]\])?\s*(.+)(?:\n|$))+/gm, (match) => {
-        const items = match.trim().split('\n');
-        const listItems = items.map(item => {
-            const checkboxMatch = item.match(/- (\[[ x]\])\s*(.+)/);
-            if (checkboxMatch) {
-                const checked = checkboxMatch[1] === '[x]' ? 'checked' : '';
-                return `<li><input type="checkbox" ${checked} disabled> ${checkboxMatch[2]}</li>`;
-            }
-            return `<li>${item.substring(2)}</li>`;
-        }).join('');
-        return `<ul>${listItems}</ul>`;
-    });
-    // Ordered lists
-    text = text.replace(/(?:^|\n)(?:\d+\.\s+(.+)(?:\n|$))+/gm, (match) => {
-        const items = match.trim().split('\n');
-        const listItems = items.map(item => `<li>${item.replace(/^\d+\.\s+/, '')}</li>`).join('');
-        return `<ol>${listItems}</ol>`;
-    });
-    // Horizontal rules
-    text = text.replace(/^---+$/gm, '<hr>');
-    // Tables
-    text = text.replace(/\|(.+)\|/gm, (match, content) => {
-        const cells = content.split('|').map((cell) => cell.trim());
-        const row = cells.map((cell) => `<td>${cell}</td>`).join('');
-        return `<tr>${row}</tr>`;
-    });
-    text = text.replace(/<tr>(.+)<\/tr>\n<tr>[-|]+<\/tr>/gm, '<table><thead>$1</thead><tbody>');
-    text = text.replace(/<\/tbody>\n<tr>/gm, '<tr>');
-    text = text.replace(/<\/tr>(?![\n\s]*<tr>)/gm, '</tr></tbody></table>');
-    // Preserve line breaks (but not within lists)
-    text = text.replace(/(?<!\>)\n(?!\<)/g, '<br>');
-    return text;
-}
 // Add these functions at the end of the file
 // Modify the openEditNoteModal function
 function openEditNoteModal(note) {
@@ -1200,7 +1138,6 @@ function saveFormData() {
     localStorage.setItem('noteFormData', JSON.stringify({
         text, author, source, rating, visibility, selectedTags
     }));
-    // localStorage.setItem('noteFormData', JSON.stringify({ text, author, source, rating, visibility }));
 }
 // Function to load form data from localStorage
 function loadFormData() {
@@ -1523,11 +1460,11 @@ class MMRComparison {
             return;
         this.pendingComparison = true;
         const winnerId = currentMMRNotes[winnerIndex].note_id;
-        const loserId = currentMMRNotes[1 - winnerIndex].note_id;
+        const _loserId = currentMMRNotes[1 - winnerIndex].note_id;
         fetch('/update_mmr', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ winner_id: winnerId, loser_id: loserId })
+            body: JSON.stringify({ winner_id: winnerId, loser_id: _loserId })
         })
             .then(response => {
             if (!response.ok) {
@@ -1558,40 +1495,7 @@ class MMRComparison {
             this.pendingComparison = false;
         });
     }
-    updateMMR_old(winnerIndex) {
-        if (isComparisonInProgress)
-            return;
-        isComparisonInProgress = true;
-        const winnerId = currentMMRNotes[winnerIndex].note_id;
-        const loserId = currentMMRNotes[1 - winnerIndex].note_id;
-        fetch('/update_mmr', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ winner_id: winnerId, loser_id: loserId })
-        })
-            .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
-            .then(result => {
-            if (result.success) {
-                this.showComparisonResult(winnerIndex, result.winner_change, result.loser_change, result.winner_id, result.loser_id);
-            }
-            else {
-                console.error('Failed to update MMR:', result.error);
-                alert('Failed to update MMR. Please try again.');
-            }
-            isComparisonInProgress = false;
-        })
-            .catch(error => {
-            console.error('Error updating MMR:', error);
-            alert('An error occurred while updating MMR. Please try again.');
-            isComparisonInProgress = false;
-        });
-    }
-    showComparisonResult(winnerIndex, winnerChange, loserChange, winnerId, loserId) {
+    showComparisonResult(_winnerIndex, winnerChange, loserChange, winnerId, _loserId) {
         if (this.toastTimeout !== null) {
             clearTimeout(this.toastTimeout);
         }

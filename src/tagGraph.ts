@@ -72,8 +72,6 @@ class TagGraph {
         // Apply styles to the container
         this.container.style.backgroundColor = TagGraph.COLORS.BACKGROUND;
         this.container.style.border = `2px solid ${TagGraph.COLORS.BORDER}`;
-        // this.container.style.borderRadius = '10px';
-        // this.container.style.overflow = 'hidden';
 
         this.nodeMenu = document.getElementById('nodeMenu')!;
         document.getElementById('closeNodeMenu')!.addEventListener('click', () => this.hideNodeMenu());
@@ -84,7 +82,6 @@ class TagGraph {
             .attr("height", TagGraph.GRAPH_HEIGHT + "px");
         this.simulation = d3.forceSimulation<Tag>()
             .force("link", d3.forceLink<Tag, Link>().id(d => d.tag_id.toString()).distance(this.getLinkDistance.bind(this)))
-            // .force("link", d3.forceLink<Tag, Link>().id(d => d.tag_id.toString()).distance(100))
             .force("charge", d3.forceManyBody().strength(-200))
             .force("center", d3.forceCenter(this.container.clientWidth / 2, TagGraph.GRAPH_HEIGHT / 2))
             .force("collision", d3.forceCollide().radius(20))
@@ -405,7 +402,6 @@ class TagGraph {
             }
         });
     }
-
     addDescendants(node: Tag, relatives: Set<Tag>): void {
         this.links.forEach(link => {
             if (link.source === node && !relatives.has(link.target)) {
@@ -418,7 +414,6 @@ class TagGraph {
     updateNodeMenu(): void {
         if (!this.lastSelectedNode) {
             document.getElementById('nodeMenu')!.style.display = 'none';
-            // document.getElementById('nodeMenu')!.style.display = 'block';
 
             return;
         }
@@ -600,7 +595,7 @@ class TagGraph {
                 // this.infoText.text(`Release to create relationship: "${targetNode.name}" → "${draggedNode.name}"`);
             }
         } else {
-            this.infoText.text("");
+            // this.infoText.text("");
         }
     }
 
@@ -1097,107 +1092,8 @@ function parseMarkdown(text: string): string {
     }
 }
 
-function parseMarkdown_better(text: string): string {
-    // Headers
-    text = text.replace(/^(#{1,6})\s+(.+)$/gm, (match, hashes, content) => {
-        const level = hashes.length;
-        return `<h${level}>${content}</h${level}>`;
-    });
 
-    // Bold and Italic
-    text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-    text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-    text = text.replace(/~~([^~]+)~~/g, '<del>$1</del>'); // Strikethrough
 
-    // Links
-    text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
-
-    // Images
-    text = text.replace(/!\[([^\]]+)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">');
-
-    // Code blocks
-    text = text.replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>');
-
-    // Inline code
-    text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
-
-    // Blockquotes
-    text = text.replace(/^>\s+(.+)$/gm, '<blockquote>$1</blockquote>');
-
-    // Unordered lists
-    text = text.replace(/(?:^|\n)(?:- (\[[ x]\])?\s*(.+)(?:\n|$))+/gm, (match) => {
-        const items = match.trim().split('\n');
-        const listItems = items.map(item => {
-            const checkboxMatch = item.match(/- (\[[ x]\])\s*(.+)/);
-            if (checkboxMatch) {
-                const checked = checkboxMatch[1] === '[x]' ? 'checked' : '';
-                return `<li><input type="checkbox" ${checked} disabled> ${checkboxMatch[2]}</li>`;
-            }
-            return `<li>${item.substring(2)}</li>`;
-        }).join('');
-        return `<ul>${listItems}</ul>`;
-    });
-
-    // Ordered lists
-    text = text.replace(/(?:^|\n)(?:\d+\.\s+(.+)(?:\n|$))+/gm, (match) => {
-        const items = match.trim().split('\n');
-        const listItems = items.map(item => `<li>${item.replace(/^\d+\.\s+/, '')}</li>`).join('');
-        return `<ol>${listItems}</ol>`;
-    });
-
-    // Horizontal rules
-    text = text.replace(/^---+$/gm, '<hr>');
-
-    // Tables
-    text = text.replace(/\|(.+)\|/gm, (match, content) => {
-        const cells = content.split('|').map((cell: string) => cell.trim());
-        const row = cells.map((cell: any) => `<td>${cell}</td>`).join('');
-        return `<tr>${row}</tr>`;
-    });
-    text = text.replace(/<tr>(.+)<\/tr>\n<tr>[-|]+<\/tr>/gm, '<table><thead>$1</thead><tbody>');
-    text = text.replace(/<\/tbody>\n<tr>/gm, '<tr>');
-    text = text.replace(/<\/tr>(?![\n\s]*<tr>)/gm, '</tr></tbody></table>');
-
-    // Preserve line breaks (but not within lists)
-    text = text.replace(/(?<!\>)\n(?!\<)/g, '<br>');
-
-    return text;
-}
-// lol why dont i just import something. eh. this is fun!
-function parseMarkdown2(text: string): string {
-
-    // Headers
-    text = text.replace(/^(#{1,6})\s+(.+)$/gm, (match, hashes, content) => {
-        const level = hashes.length;
-        return `<h${level}>${content}</h${level}>`;
-    });
-
-    // Bold and Italic
-    text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-    text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-
-    // Checkboxes and Lists
-    text = text.replace(/(?:^|\n)(?:- (\[[ x]\])?\s*(.+)(?:\n|$))+/gm, (match) => {
-        const items = match.trim().split('\n');
-        const listItems = items.map(item => {
-            const checkboxMatch = item.match(/- (\[[ x]\])\s*(.+)/);
-            if (checkboxMatch) {
-                const checked = checkboxMatch[1] === '[x]' ? 'checked' : '';
-                return `<li><input type="checkbox" ${checked} disabled> ${checkboxMatch[2]}</li>`;
-            }
-            return `<li>${item.substring(2)}</li>`;
-        }).join('');
-        return `<ul>${listItems}</ul>`;
-    });
-
-    // Line thing or whatever
-    text = text.replace(/^----+$/gm, '<hr>');
-
-    // Preserve line breaks (but not within lists)
-    text = text.replace(/(?<!\>)\n(?!\<)/g, '<br>');
-
-    return text;
-}
 // Add these functions at the end of the file
 
 // Modify the openEditNoteModal function
@@ -1410,25 +1306,13 @@ function initRating(containerId: string): void {
 initRating('noteRating');
 initRating('noteVisibility');
 
-function markdownToHtml(markdown: string): string {
-    return parseMarkdown(markdown);
-    return markdown
-        .replace(/^(#{1,6})\s+(.+)$/gm, (match, hashes, content) => {
-            const level = hashes.length;
-            return `<h${level}>${content}</h${level}>`;
-        })
-        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-        .replace(/`([^`]+)`/g, '<code>$1</code>')
-        .replace(/\n/g, '<br>');
-}
 
 // Function to update preview
 function updatePreview(): void {
     const noteText = (document.getElementById('noteText') as HTMLTextAreaElement).value;
     const notePreview = document.getElementById('notePreview');
     if (notePreview) {
-        notePreview.innerHTML = markdownToHtml(noteText);
+        notePreview.innerHTML = parseMarkdown(noteText);
     }
 }
 
@@ -1453,7 +1337,6 @@ function saveFormData(): void {
     localStorage.setItem('noteFormData', JSON.stringify({
         text, author, source, rating, visibility, selectedTags
     }));
-    // localStorage.setItem('noteFormData', JSON.stringify({ text, author, source, rating, visibility }));
 }
 
 // Function to load form data from localStorage
@@ -2022,7 +1905,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (noteText && notePreview) {
         noteText.addEventListener('input', () => {
-            notePreview.innerHTML = markdownToHtml(noteText.value);
+            notePreview.innerHTML = parseMarkdown(noteText.value);
         });
     }
 

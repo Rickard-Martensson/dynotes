@@ -343,6 +343,8 @@ class TagGraph {
             }
         });
     }
+    addmeme() {
+    }
     addDescendants(node, relatives) {
         this.links.forEach(link => {
             if (link.source === node && !relatives.has(link.target)) {
@@ -987,35 +989,6 @@ function parseMarkdown_better(text) {
     text = text.replace(/(?<!\>)\n(?!\<)/g, '<br>');
     return text;
 }
-// lol why dont i just import something. eh. this is fun!
-function parseMarkdown2(text) {
-    // Headers
-    text = text.replace(/^(#{1,6})\s+(.+)$/gm, (match, hashes, content) => {
-        const level = hashes.length;
-        return `<h${level}>${content}</h${level}>`;
-    });
-    // Bold and Italic
-    text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-    text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-    // Checkboxes and Lists
-    text = text.replace(/(?:^|\n)(?:- (\[[ x]\])?\s*(.+)(?:\n|$))+/gm, (match) => {
-        const items = match.trim().split('\n');
-        const listItems = items.map(item => {
-            const checkboxMatch = item.match(/- (\[[ x]\])\s*(.+)/);
-            if (checkboxMatch) {
-                const checked = checkboxMatch[1] === '[x]' ? 'checked' : '';
-                return `<li><input type="checkbox" ${checked} disabled> ${checkboxMatch[2]}</li>`;
-            }
-            return `<li>${item.substring(2)}</li>`;
-        }).join('');
-        return `<ul>${listItems}</ul>`;
-    });
-    // Line thing or whatever
-    text = text.replace(/^----+$/gm, '<hr>');
-    // Preserve line breaks (but not within lists)
-    text = text.replace(/(?<!\>)\n(?!\<)/g, '<br>');
-    return text;
-}
 // Add these functions at the end of the file
 // Modify the openEditNoteModal function
 function openEditNoteModal(note) {
@@ -1202,24 +1175,12 @@ function initRating(containerId) {
 // Initialize star ratings
 initRating('noteRating');
 initRating('noteVisibility');
-function markdownToHtml(markdown) {
-    return parseMarkdown(markdown);
-    return markdown
-        .replace(/^(#{1,6})\s+(.+)$/gm, (match, hashes, content) => {
-        const level = hashes.length;
-        return `<h${level}>${content}</h${level}>`;
-    })
-        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-        .replace(/`([^`]+)`/g, '<code>$1</code>')
-        .replace(/\n/g, '<br>');
-}
 // Function to update preview
 function updatePreview() {
     const noteText = document.getElementById('noteText').value;
     const notePreview = document.getElementById('notePreview');
     if (notePreview) {
-        notePreview.innerHTML = markdownToHtml(noteText);
+        notePreview.innerHTML = parseMarkdown(noteText);
     }
 }
 // Add event listener to noteText
@@ -1744,7 +1705,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const notePreview = document.getElementById('notePreview');
     if (noteText && notePreview) {
         noteText.addEventListener('input', () => {
-            notePreview.innerHTML = markdownToHtml(noteText.value);
+            notePreview.innerHTML = parseMarkdown(noteText.value);
         });
     }
     new MMRComparison();

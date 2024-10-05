@@ -25,6 +25,29 @@ import secrets
 import string
 
 
+@app.route("/generate_tag_password", methods=["POST"])
+def generate_tag_password_route():
+    data = request.json
+    tag_id = data.get("tag_id")
+    max_visibility = data.get("max_visibility", 3)
+    admin_password = data.get("admin_password", "")
+
+    if not tag_id:
+        return jsonify({"success": False, "error": "Tag ID is required"}), 400
+
+    if not check_password_hash(PASSWORD_HASHES["vis_5"], admin_password):
+        return jsonify({"success": False, "error": "Invalid administrator password"}), 403
+
+    if max_visibility < 1 or max_visibility > 5:
+        return jsonify({"success": False, "error": "Invalid visibility level. Please enter a number between 1 and 5."}), 400
+
+    password = generate_tag_password(tag_id, max_visibility)
+    if password:
+        return jsonify({"success": True, "password": password})
+    else:
+        return jsonify({"success": False, "error": "Failed to generate password"}), 500
+
+
 def generate_tag_password(tag_id, max_visibility=3):
     # Generate a random password
     password = "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(12))
@@ -49,54 +72,6 @@ def generate_tag_password(tag_id, max_visibility=3):
         return None
 
 
-@app.route("/generate_tag_password", methods=["POST"])
-def generate_tag_password_route():
-    data = request.json
-    tag_id = data.get("tag_id")
-    max_visibility = data.get("max_visibility", 3)
-    admin_password = data.get("admin_password", "")
-
-    if not tag_id:
-        return jsonify({"success": False, "error": "Tag ID is required"}), 400
-
-    if not check_password_hash(PASSWORD_HASHES["vis_5"], admin_password):
-        return jsonify({"success": False, "error": "Invalid administrator password"}), 403
-
-    if max_visibility < 1 or max_visibility > 5:
-        return jsonify({"success": False, "error": "Invalid visibility level. Please enter a number between 1 and 5."}), 400
-
-    password = generate_tag_password(tag_id, max_visibility)
-    if password:
-        return jsonify({"success": True, "password": password})
-    else:
-        return jsonify({"success": False, "error": "Failed to generate password"}), 500
-
-
-def generate_tag_password(tag_id, max_visibility):
-    # Generate a random password
-    password = "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(12))
-
-    # Store the password hash and associated tag_id and max_visibility
-    db = get_db()
-    cursor = db.cursor()
-
-    try:
-        cursor.execute(
-            """
-            INSERT INTO TagPasswords (tag_id, password_hash, max_visibility)
-            VALUES (?, ?, ?)
-        """,
-            (tag_id, generate_password_hash(password), max_visibility),
-        )
-        db.commit()
-        return password
-    except Exception as e:
-        db.rollback()
-        app.logger.error(f"Error generating tag password: {str(e)}")
-        return None
-
-
-# delete this
 @app.route("/export_tags_and_relationships", methods=["GET"])
 def export_tags_and_relationships():
     db = get_db()

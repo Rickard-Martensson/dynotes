@@ -109,34 +109,9 @@
     margin-bottom: 0em;
 } */
 
-/* Add Tag and Add Note button row */
-.action-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
-
-#addTagSection {
-    display: flex;
-    align-items: center;
-    flex-grow: 1;
-    margin-right: 10px;
-}
-
-#addTagSection input[type="text"] {
-    flex-grow: 1;
-    margin-right: 10px;
-}
-
-#addTagSection button,
-#showAddNoteBtn {
-    flex-shrink: 0;
-
-}
 
 #showAddNoteBtn {
-    margin-right: 10px;
+    margin-right: 2.5px;
 }
 
 /* Add Note Section */
@@ -209,47 +184,6 @@
     margin-right: 5px;
 }
 
-/* Responsive layout */
-@media (max-width: 600px) {
-    .action-row {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    #addTagSection {
-        margin-right: 0;
-        margin-bottom: 10px;
-    }
-
-    .note-form-row {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .note-form-row>* {
-        margin-right: 0 !important;
-        margin-bottom: 10px;
-    }
-
-    /* Keep star and visibility ratings on the same row in narrow view */
-    .note-form-row:nth-child(2) {
-        flex-direction: row;
-    }
-
-    #noteTextContainer {
-        flex-direction: column;
-    }
-
-    #noteText {
-        margin-right: 0;
-        margin-bottom: 10px;
-    }
-
-    .star-rating,
-    .visibility-rating {
-        justify-content: center;
-    }
-}
 
 
 
@@ -300,12 +234,194 @@
 #addNoteForm {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 5px;
 }
 
 .note-form-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 10px;
+    gap: 5px;
+}
+
+.action-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0px;
+    flex-wrap: wrap;
+}
+
+#addTagSection {
+    display: flex;
+    align-items: center;
+    flex-grow: 1;
+    margin-right: 2.5px;
+    min-width: 150px;
+}
+
+#addTagSection input[type="text"] {
+    flex-grow: 1;
+    margin-right: 2.5px;
+    min-width: 150px;
+}
+
+#addTagSection button,
+#showAddNoteBtn,
+#startMMRComparison {
+    flex-shrink: 0;
+    white-space: nowrap;
+    max-width: 150px;
+}
+
+
+
+
+
+/* For screens wider than 600px */
+@media (min-width: 600px) {
+
+    #showAddNoteBtn {
+        margin-left: 2.5px;
+    }
+
+    #startMMRComparison {
+        margin-left: -5px;
+    }
+}
+
+/* For screens 600px and narrower */
+@media (max-width: 600px) {
+
+    .search-container {
+        flex-direction: row;
+    }
+
+    .star-rating,
+    .visibility-rating {
+        justify-content: center;
+    }
+
+    #noteText {
+        margin-right: 0;
+        margin-bottom: 2.5px;
+    }
+
+    #noteTextContainer {
+        flex-direction: column;
+    }
+
+    .note-form-row>* {
+        margin-right: 0 !important;
+        margin-bottom: 10px;
+    }
+
+    .note-form-row:nth-child(2) {
+        flex-direction: row;
+    }
+
+    .note-form-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .action-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    #addTagSection {
+        margin-right: 0;
+        margin-bottom: 2.5px;
+    }
+
+    /* New styles for button container */
+    .button-container {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 2.5px;
+    }
+
+    #showAddNoteBtn,
+    #startMMRComparison {
+        flex: 1;
+        margin-top: 0;
+        max-width: none;
+    }
+
+    #showAddNoteBtn {
+        margin-right: 2.5px;
+    }
+
+    #startMMRComparison {
+        margin-left: 2.5px;
+    }
+}
+
+.search-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    align-items: center;
+}
+
+#searchText {
+    flex: 1 1 200px;
+    min-width: 150px;
+}
+
+#sortCriteria {
+    flex: 0 1 auto;
+    min-width: 120px;
+}
+
+.search-container button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+#searchText,
+#sortCriteria,
+.search-container button {
+    height: 38px;
+    /* Adjust as needed for consistent height */
+}
+
+@media (max-width: 600px) {
+    #searchText {
+        flex-basis: 100%;
+        width: 100%;
+    }
+
+    #sortCriteria {
+        margin-right: 2.5px;
+    }
+
+    .search-container button {
+        margin-left: 2.5px;
+
+    }
+
+    #sortCriteria,
+    .search-container button {
+        flex: 1 1 calc(50% - 2.5px);
+        /* Equal width, accounting for gap */
+        max-width: calc(50% - 2.5px);
+        /* Ensure they don't exceed 50% width */
+
+
+    }
+
+    .search-container button {
+        padding-left: 5px;
+        padding-right: 5px;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+}
+
+@media (min-width: 600px) {
+    .search-container button {
+        margin-left: -5px;
+    }
 }

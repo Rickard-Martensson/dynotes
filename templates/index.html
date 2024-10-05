@@ -97,9 +97,13 @@
             <input type="text" id="tagName" placeholder="Enter tag name">
             <button onclick="addTag()" class="normal">Add Tag</button>
         </div>
-        <button id="showAddNoteBtn" class="brown">Add Note ▼</button>
-        <button id="startMMRComparison" class="brown">Compare Notes</button>
+
+        <div class="button-container">
+            <button id="showAddNoteBtn" class="brown">Add Note ▼</button>
+            <button id="startMMRComparison" class="brown">Compare Notes</button>
+        </div>
     </div>
+
 
 
     <!-- Updated note addition section -->
@@ -169,32 +173,26 @@
         </div>
     </div>
 
-    <!-- <textarea id="noteText" placeholder="Enter note text"></textarea>
-    <input type="text" id="noteAuthor" placeholder="Author">
-    <input type="number" id="noteRating" placeholder="Rating">
-    <input type="text" id="noteSource" placeholder="Source">
-    <button onclick="addNote()">Add Note</button> -->
-
     <h2>
         <center>Search</center>
     </h2>
     <div id="loadingIndicator" class="loading-indicator"><span class="dots"></span></div>
-    <!-- <div>
-        <p>Selected Tags: <span id="selectedSearchTags"></span></p>
-    </div> -->
     <div class="search-container">
         <input type="text" id="searchText" placeholder="Enter search text">
-        <select id="sortCriteria">
-            <option value="stars-desc">⭐ (High to low)</option>
-            <option value="stars-asc">⭐ (Low to high)</option>
-            <option value="date-desc">⏳ (Newest first)</option>
-            <option value="date-asc">⌛ (Oldest first)</option>
-            <option value="visibility-desc">🔏 (High to low)</option>
-            <option value="visibility-asc">🔓 (Low to high)</option>
-            <option value="mmr-desc">🥊MMR (High to low)</option>
-            <option value="mmr-asc">🥊MMR (Low to high)</option>
-        </select>
-        <button onclick="searchNotes()" class="normal">Search</button>
+        <div class="button-container">
+
+            <select id="sortCriteria">
+                <option value="stars-desc">⭐ (High to low)</option>
+                <option value="stars-asc">⭐ (Low to high)</option>
+                <option value="date-desc">⏳ (Newest first)</option>
+                <option value="date-asc">⌛ (Oldest first)</option>
+                <option value="visibility-desc">🔏 (High to low)</option>
+                <option value="visibility-asc">🔓 (Low to high)</option>
+                <option value="mmr-desc">🥊MMR (High to low)</option>
+                <option value="mmr-asc">🥊MMR (Low to high)</option>
+            </select>
+            <button onclick="searchNotes()" class="normal">Search</button>
+        </div>
     </div>
 
     <div id="results"></div>

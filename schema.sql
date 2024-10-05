@@ -44,3 +44,11 @@ CREATE INDEX IF NOT EXISTS idx_notes_date ON Notes(date);
 
 -- New index for MMR-based queries
 CREATE INDEX IF NOT EXISTS idx_notes_mmr ON Notes(mmr);
+
+CREATE TABLE IF NOT EXISTS TagPasswords (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tag_id INTEGER NOT NULL,
+    password_hash TEXT NOT NULL,
+    max_visibility INTEGER NOT NULL,
+    FOREIGN KEY (tag_id) REFERENCES Tags(tag_id)
+);

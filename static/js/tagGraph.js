@@ -614,9 +614,20 @@ class TagGraph {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text: searchText, tags, password })
         })
-            .then(response => response.json())
+            .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => {
+                    throw new Error(`HTTP error! status: ${response.status}, body: ${text}`);
+                });
+            }
+            return response.json();
+        })
             .then(results => displaySearchResults(results))
-            .catch(error => console.error('Failed to search notes:', error));
+            .catch(error => {
+            console.error('Failed to search notes:', error);
+            toastManager.showToast('Search failed', { isError: true, details: error.message, duration: 5000 });
+            toggleLoadingAnimation(false);
+        });
     }
     initialize() {
         this.svg.append("defs").append("marker")
@@ -698,20 +709,84 @@ async function searchNotes() {
         console.error('Failed to search notes');
     }
 }
-async function updatePassword() {
-    const oldPassword = prompt("Enter old password:");
-    if (!oldPassword)
+function initializeSettingsMenu() {
+    const updateGlobalPasswordsBtn = document.getElementById('updateGlobalPasswords');
+    const generateTagPasswordBtn = document.getElementById('generateTagPassword');
+    if (updateGlobalPasswordsBtn) {
+        updateGlobalPasswordsBtn.addEventListener('click', updateGlobalPasswords);
+    }
+    if (generateTagPasswordBtn) {
+        generateTagPasswordBtn.addEventListener('click', handleGenerateTagPassword);
+    }
+}
+async function updateGlobalPasswords() {
+    const vis1Password = prompt("Enter new password for visibility 1:");
+    const vis3Password = prompt("Enter new password for visibility 3:");
+    const vis5Password = prompt("Enter new password for visibility 5:");
+    if (!vis1Password || !vis3Password || !vis5Password) {
+        alert("All passwords must be provided.");
         return;
-    const newPassword = prompt("Enter new password:");
-    if (!newPassword)
+    }
+    try {
+        const response = await fetch('/update_global_passwords', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ vis1: vis1Password, vis3: vis3Password, vis5: vis5Password })
+        });
+        const result = await response.json();
+        if (result.success) {
+            alert("Global passwords updated successfully.");
+        }
+        else {
+            alert("Failed to update global passwords: " + result.error);
+        }
+    }
+    catch (error) {
+        console.error('Error updating global passwords:', error);
+        alert("An error occurred while updating global passwords.");
+    }
+}
+async function handleGenerateTagPassword() {
+    const tagName = prompt("Enter the name of the tag for which you want to generate a password:");
+    if (!tagName)
         return;
-    const response = await fetch('/change_password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ old_password: oldPassword, new_password: newPassword })
-    });
-    const result = await response.json();
-    alert(result.message);
+    const tag = window.tagGraph.nodes.find((n) => n.name === tagName);
+    if (!tag) {
+        alert("Tag not found.");
+        return;
+    }
+    const maxVisibility = parseInt(prompt("Enter the maximum visibility level for this password (1-5):", "3") || "3", 10);
+    if (maxVisibility < 1 || maxVisibility > 5) {
+        alert("Invalid visibility level. Please enter a number between 1 and 5.");
+        return;
+    }
+    const adminPassword = prompt("Enter the administrator password (visibility 5 password):");
+    if (!adminPassword) {
+        alert("Administrator password is required.");
+        return;
+    }
+    try {
+        const response = await fetch('/generate_tag_password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                tag_id: tag.tag_id,
+                max_visibility: maxVisibility,
+                admin_password: adminPassword
+            })
+        });
+        const result = await response.json();
+        if (result.success) {
+            alert(`Generated password for tag "${tagName}" (max visibility ${maxVisibility}): ${result.password}`);
+        }
+        else {
+            alert(`Failed to generate password: ${result.error}`);
+        }
+    }
+    catch (error) {
+        console.error('Error generating tag password:', error);
+        alert("An error occurred while generating the password. Please check the console for more details.");
+    }
 }
 function toggleLoadingAnimation(isSerarching) {
     const loadingIndicator = document.getElementById("loadingIndicator");
@@ -795,9 +870,29 @@ function getVisibilityEmoji(visibility) {
 function isTallMode() {
     return window.innerHeight > window.innerWidth;
 }
+async function generateTagPassword(tagId, maxVisibility = 3) {
+    try {
+        const response = await fetch('/generate_tag_password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tag_id: tagId, max_visibility: maxVisibility })
+        });
+        if (response.ok) {
+            const result = await response.json();
+            if (result.success) {
+                return result.password;
+            }
+        }
+        return null;
+    }
+    catch (error) {
+        console.error('Error generating tag password:', error);
+        return null;
+    }
+}
 function wrapTags(tags, maxLineLength = 30) {
     if (isTallMode())
-        maxLineLength = 4;
+        maxLineLength = 1;
     const tagArray = tags.split(',');
     let lines = [];
     let currentLine = '';
@@ -1319,7 +1414,7 @@ class ToastManager {
 // Initialize the ToastManager
 const toastManager = new ToastManager();
 // Example usage:
-toastManager.showToast('This is a test toast message');
+toastManager.showToast('Welcome to DyNotes! :)');
 let currentMMRNotes = [];
 let areRatingsVisible = false;
 let isComparisonInProgress = false;
@@ -1626,6 +1721,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const showAddNoteBtn = document.getElementById('showAddNoteBtn');
     const addNoteSection = document.getElementById('addNoteSection');
     initializeFullscreenToggle();
+    initializeSettingsMenu();
     if (showAddNoteBtn && addNoteSection) {
         showAddNoteBtn.addEventListener('click', () => {
             addNoteSection.style.display = addNoteSection.style.display === 'none' ? 'block' : 'none';

@@ -13,6 +13,89 @@ DATABASE = "notes.db"
 PASSWORD_HASH = generate_password_hash("1234")  # Initial password
 
 
+PASSWORD_HASHES = {
+    "vis_1": generate_password_hash("pw1"),
+    "vis_2": generate_password_hash("pw2"),
+    "vis_3": generate_password_hash("pw3"),
+    "vis_4": generate_password_hash("pw4"),
+    "vis_5": generate_password_hash("pw5"),
+}
+
+import secrets
+import string
+
+
+def generate_tag_password(tag_id, max_visibility=3):
+    # Generate a random password
+    password = "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(12))
+
+    # Store the password hash and associated tag_id and max_visibility
+    db = get_db()
+    cursor = db.cursor()
+
+    try:
+        cursor.execute(
+            """
+            INSERT INTO TagPasswords (tag_id, password_hash, max_visibility)
+            VALUES (?, ?, ?)
+        """,
+            (tag_id, generate_password_hash(password), max_visibility),
+        )
+        db.commit()
+        return password
+    except Exception as e:
+        db.rollback()
+        app.logger.error(f"Error generating tag password: {str(e)}")
+        return None
+
+
+@app.route("/generate_tag_password", methods=["POST"])
+def generate_tag_password_route():
+    data = request.json
+    tag_id = data.get("tag_id")
+    max_visibility = data.get("max_visibility", 3)
+    admin_password = data.get("admin_password", "")
+
+    if not tag_id:
+        return jsonify({"success": False, "error": "Tag ID is required"}), 400
+
+    if not check_password_hash(PASSWORD_HASHES["vis_5"], admin_password):
+        return jsonify({"success": False, "error": "Invalid administrator password"}), 403
+
+    if max_visibility < 1 or max_visibility > 5:
+        return jsonify({"success": False, "error": "Invalid visibility level. Please enter a number between 1 and 5."}), 400
+
+    password = generate_tag_password(tag_id, max_visibility)
+    if password:
+        return jsonify({"success": True, "password": password})
+    else:
+        return jsonify({"success": False, "error": "Failed to generate password"}), 500
+
+
+def generate_tag_password(tag_id, max_visibility):
+    # Generate a random password
+    password = "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(12))
+
+    # Store the password hash and associated tag_id and max_visibility
+    db = get_db()
+    cursor = db.cursor()
+
+    try:
+        cursor.execute(
+            """
+            INSERT INTO TagPasswords (tag_id, password_hash, max_visibility)
+            VALUES (?, ?, ?)
+        """,
+            (tag_id, generate_password_hash(password), max_visibility),
+        )
+        db.commit()
+        return password
+    except Exception as e:
+        db.rollback()
+        app.logger.error(f"Error generating tag password: {str(e)}")
+        return None
+
+
 # delete this
 @app.route("/export_tags_and_relationships", methods=["GET"])
 def export_tags_and_relationships():
@@ -38,9 +121,36 @@ def export_tags_and_relationships():
     return jsonify(list(root_tags.values()))
 
 
-def get_visibility_level(password):
-    visibility_level = 5 if check_password_hash(PASSWORD_HASH, password) else 1
-    return visibility_level
+def get_visibility_level(password, tag_id=None):
+    # Check global passwords first
+    for level in range(5, 0, -1):
+        if check_password_hash(PASSWORD_HASHES[f"vis_{level}"], password):
+            return level
+
+    # Check tag-specific password if tag_id is provided
+    if tag_id:
+        try:
+            db = get_db()
+            cursor = db.cursor()
+            cursor.execute(
+                """
+                SELECT max_visibility FROM TagPasswords
+                WHERE tag_id = ? AND password_hash = ?
+            """,
+                (tag_id, generate_password_hash(password)),
+            )
+            result = cursor.fetchone()
+            if result:
+                return result["max_visibility"]
+        except sqlite3.OperationalError as e:
+            if "no such table: TagPasswords" in str(e):
+                # TagPasswords table doesn't exist, log the error and continue
+                app.logger.warning("TagPasswords table does not exist yet.")
+            else:
+                # Some other SQLite error occurred, re-raise it
+                raise
+
+    return 1  # Default visibility level
 
 
 @app.route("/tags", methods=["GET"])
@@ -349,74 +459,80 @@ def delete_note():
 
 @app.route("/search", methods=["POST"])
 def search():
-    db = get_db()
-    data = request.json
-    app.logger.debug(f"Search request data: {data}")
-    selected_tags = data.get("tags", [])
-    search_text = data.get("text", "")
-    password = data.get("password", "")
-    sort_criteria = data.get("sortCriteria", "stars-desc")  # Default sorting
+    try:
+        db = get_db()
+        data = request.json
 
-    # visibility_level = 5 if check_password_hash(PASSWORD_HASH, password) else 1
-    visibility_level = get_visibility_level(password)
+        app.logger.debug(f"Search request data: {data}")
+        selected_tags = data.get("tags", [])
+        search_text = data.get("text", "")
+        password = data.get("password", "")
+        sort_criteria = data.get("sortCriteria", "stars-desc")
 
-    query = """
-    WITH RECURSIVE
-    tag_hierarchy(root_id, descendant_id) AS (
-        SELECT tag_id, tag_id FROM Tags WHERE tag_id IN ({})
-        UNION
-        SELECT th.root_id, tr.child_tag_id
-        FROM tag_hierarchy th
-        JOIN TagRelationships tr ON th.descendant_id = tr.parent_tag_id
-    ),
-    matching_notes AS (
-        SELECT n.note_id
+        # Check visibility level for each selected tag
+        visibility_levels = [get_visibility_level(password, tag_id) for tag_id in selected_tags]
+        visibility_level = max(visibility_levels) if visibility_levels else get_visibility_level(password)
+
+        query = """
+        WITH RECURSIVE
+        tag_hierarchy(root_id, descendant_id) AS (
+            SELECT tag_id, tag_id FROM Tags WHERE tag_id IN ({})
+            UNION
+            SELECT th.root_id, tr.child_tag_id
+            FROM tag_hierarchy th
+            JOIN TagRelationships tr ON th.descendant_id = tr.parent_tag_id
+        ),
+        matching_notes AS (
+            SELECT n.note_id
+            FROM Notes n
+            JOIN NoteTags nt ON n.note_id = nt.note_id
+            JOIN tag_hierarchy th ON nt.tag_id = th.descendant_id
+            GROUP BY n.note_id
+            HAVING COUNT(DISTINCT th.root_id) = ?
+        )
+        SELECT n.note_id, n.text, n.author, n.date, n.rating, n.source, n.visibility, n.mmr, n.mmr_matches,
+            GROUP_CONCAT(DISTINCT t.name) as tags
         FROM Notes n
+        JOIN matching_notes mn ON n.note_id = mn.note_id
         JOIN NoteTags nt ON n.note_id = nt.note_id
-        JOIN tag_hierarchy th ON nt.tag_id = th.descendant_id
-        GROUP BY n.note_id
-        HAVING COUNT(DISTINCT th.root_id) = ?
-    )
-    SELECT n.note_id, n.text, n.author, n.date, n.rating, n.source, n.visibility, n.mmr, n.mmr_matches,
-           GROUP_CONCAT(DISTINCT t.name) as tags
-    FROM Notes n
-    JOIN matching_notes mn ON n.note_id = mn.note_id
-    JOIN NoteTags nt ON n.note_id = nt.note_id
-    JOIN Tags t ON nt.tag_id = t.tag_id
-    WHERE n.visibility <= ?
-    """
+        JOIN Tags t ON nt.tag_id = t.tag_id
+        WHERE n.visibility <= ?
+        """
 
-    params = []
-    if selected_tags:
-        tag_placeholders = ",".join("?" for _ in selected_tags)
-        params.extend(selected_tags)
-    else:
-        tag_placeholders = "SELECT tag_id FROM Tags"
+        params = []
+        if selected_tags:
+            tag_placeholders = ",".join("?" for _ in selected_tags)
+            params.extend(selected_tags)
+        else:
+            tag_placeholders = "SELECT tag_id FROM Tags"
 
-    query = query.format(tag_placeholders)
-    params.extend([len(selected_tags), visibility_level])
+        query = query.format(tag_placeholders)
+        params.extend([len(selected_tags), visibility_level])
 
-    if search_text:
-        query += " AND n.text LIKE ?"
-        params.append(f"%{search_text}%")
+        if search_text:
+            query += " AND n.text LIKE ?"
+            params.append(f"%{search_text}%")
 
-    query += " GROUP BY n.note_id"
+        query += " GROUP BY n.note_id"
 
-    sort_field, sort_order = sort_criteria.split("-")
-    sort_mapping = {"stars": "n.rating", "date": "n.date", "visibility": "n.visibility", "mmr": "n.mmr"}  # Add this line
-    query += f" ORDER BY {sort_mapping[sort_field]} {'DESC' if sort_order == 'desc' else 'ASC'}"
+        sort_field, sort_order = sort_criteria.split("-")
+        sort_mapping = {"stars": "n.rating", "date": "n.date", "visibility": "n.visibility", "mmr": "n.mmr"}  # Add this line
+        query += f" ORDER BY {sort_mapping[sort_field]} {'DESC' if sort_order == 'desc' else 'ASC'}"
 
-    app.logger.debug(f"Search query: {query}")
-    app.logger.debug(f"Search params: {params}")
+        app.logger.debug(f"Search query: {query}")
+        app.logger.debug(f"Search params: {params}")
 
-    cursor = db.execute(query, params)
-    results = cursor.fetchall()
+        cursor = db.execute(query, params)
+        results = cursor.fetchall()
 
-    filtered_results = [dict(row) for row in results if row["visibility"] <= visibility_level]
+        filtered_results = [dict(row) for row in results if row["visibility"] <= visibility_level]
 
-    app.logger.debug(f"Filtered search results: {filtered_results}")
+        app.logger.debug(f"Filtered search results: {filtered_results}")
 
-    return jsonify(filtered_results)
+        return jsonify(filtered_results)
+    except Exception as e:
+        app.logger.error(f"Error in search: {str(e)}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/add_note", methods=["POST"])

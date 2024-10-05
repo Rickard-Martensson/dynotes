@@ -131,7 +131,7 @@
             </div>
             <div id="noteTextContainer">
                 <textarea id="noteText" placeholder="Enter your note here (Markdown supported)"></textarea>
-                <div id="notePreview"></div>
+                <div id="notePreview" class="note-text "></div>
             </div>
             <button onclick="addNote()">Add Note</button>
         </div>
@@ -245,6 +245,7 @@
         </div>
     </div>
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="{{ url_for('static', filename='js/tagGraph.js') }}"></script>
     <!-- <script>
         const tagGraph = new TagGraph("tagGraph");

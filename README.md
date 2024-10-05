@@ -73,6 +73,8 @@ DyNotes is a note-taking application I created to organize thoughts using a dyna
 
 DyNotes is a personal project that works for my needs, and works on my website. but it's not polished for wide-scale use. If you're interested in using it, you might need to tweak things to fit your setup (especially the password protection parts)
 
+![Alt text](image.png)
+
 ## Contributing
 
 Feel free to submit pull requests if you want to add features or fix bugs. I'm always open to improvements!

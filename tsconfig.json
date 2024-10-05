@@ -12,7 +12,7 @@
         "module": "ES2022",
         "outDir": "./static/js",
         "strict": true,
-        "esModuleInterop": true
+        "esModuleInterop": true,
     },
     "include": [
         "src/**/*"

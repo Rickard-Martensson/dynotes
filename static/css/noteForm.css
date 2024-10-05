@@ -67,47 +67,6 @@
     overflow-y: auto;
 }
 
-#notePreview h1,
-#notePreview h2,
-#notePreview h3,
-#notePreview h4,
-#notePreview h5,
-#notePreview h6 {
-    margin-top: 0em;
-    margin-bottom: 0em;
-    font-weight: bold;
-}
-
-#notePreview h1 {
-    font-size: 1.3em;
-}
-
-#notePreview h2 {
-    font-size: 1.2em;
-}
-
-#notePreview h3 {
-    font-size: 1.1em;
-}
-
-#notePreview h4 {
-    font-size: 1em;
-}
-
-#notePreview h5 {
-    font-size: 1.0em;
-}
-
-#notePreview h6 {
-    font-size: 0.9em;
-}
-
-/* #notePreview hr {
-    border: none;
-    border-top: 1px solid #ccc;
-    margin-top: 0em;
-    margin-bottom: 0em;
-} */
 
 
 #showAddNoteBtn {

@@ -792,7 +792,12 @@ function getVisibilityEmoji(visibility) {
         default: return "🔓";
     }
 }
+function isTallMode() {
+    return window.innerHeight > window.innerWidth;
+}
 function wrapTags(tags, maxLineLength = 30) {
+    if (isTallMode())
+        maxLineLength = 4;
     const tagArray = tags.split(',');
     let lines = [];
     let currentLine = '';
@@ -814,8 +819,81 @@ function wrapTags(tags, maxLineLength = 30) {
     }
     return lines;
 }
-// lol why dont i just import something. eh. this is fun!
 function parseMarkdown(text) {
+    if (typeof marked !== 'undefined') {
+        // Use marked.parse directly without setOptions
+        // marked.Parser.parse()
+        return marked.marked.parse(text, {
+            breaks: true,
+            gfm: true,
+            sanitize: false // Set to false to allow HTML in markdown
+        });
+    }
+    else {
+        console.warn('Marked library not loaded. Falling back to basic parsing.');
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\n/g, '<br>');
+    }
+}
+function parseMarkdown_better(text) {
+    // Headers
+    text = text.replace(/^(#{1,6})\s+(.+)$/gm, (match, hashes, content) => {
+        const level = hashes.length;
+        return `<h${level}>${content}</h${level}>`;
+    });
+    // Bold and Italic
+    text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    text = text.replace(/~~([^~]+)~~/g, '<del>$1</del>'); // Strikethrough
+    // Links
+    text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+    // Images
+    text = text.replace(/!\[([^\]]+)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">');
+    // Code blocks
+    text = text.replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>');
+    // Inline code
+    text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+    // Blockquotes
+    text = text.replace(/^>\s+(.+)$/gm, '<blockquote>$1</blockquote>');
+    // Unordered lists
+    text = text.replace(/(?:^|\n)(?:- (\[[ x]\])?\s*(.+)(?:\n|$))+/gm, (match) => {
+        const items = match.trim().split('\n');
+        const listItems = items.map(item => {
+            const checkboxMatch = item.match(/- (\[[ x]\])\s*(.+)/);
+            if (checkboxMatch) {
+                const checked = checkboxMatch[1] === '[x]' ? 'checked' : '';
+                return `<li><input type="checkbox" ${checked} disabled> ${checkboxMatch[2]}</li>`;
+            }
+            return `<li>${item.substring(2)}</li>`;
+        }).join('');
+        return `<ul>${listItems}</ul>`;
+    });
+    // Ordered lists
+    text = text.replace(/(?:^|\n)(?:\d+\.\s+(.+)(?:\n|$))+/gm, (match) => {
+        const items = match.trim().split('\n');
+        const listItems = items.map(item => `<li>${item.replace(/^\d+\.\s+/, '')}</li>`).join('');
+        return `<ol>${listItems}</ol>`;
+    });
+    // Horizontal rules
+    text = text.replace(/^---+$/gm, '<hr>');
+    // Tables
+    text = text.replace(/\|(.+)\|/gm, (match, content) => {
+        const cells = content.split('|').map((cell) => cell.trim());
+        const row = cells.map((cell) => `<td>${cell}</td>`).join('');
+        return `<tr>${row}</tr>`;
+    });
+    text = text.replace(/<tr>(.+)<\/tr>\n<tr>[-|]+<\/tr>/gm, '<table><thead>$1</thead><tbody>');
+    text = text.replace(/<\/tbody>\n<tr>/gm, '<tr>');
+    text = text.replace(/<\/tr>(?![\n\s]*<tr>)/gm, '</tr></tbody></table>');
+    // Preserve line breaks (but not within lists)
+    text = text.replace(/(?<!\>)\n(?!\<)/g, '<br>');
+    return text;
+}
+// lol why dont i just import something. eh. this is fun!
+function parseMarkdown2(text) {
     // Headers
     text = text.replace(/^(#{1,6})\s+(.+)$/gm, (match, hashes, content) => {
         const level = hashes.length;

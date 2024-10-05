@@ -1,7 +1,7 @@
 "use strict";
 // tagGraph.ts
 // import * as d3 from 'd3';
-const IS_PROD = true;
+const IS_PROD = false;
 const fetchpath = IS_PROD ? "/dynotes" : "";
 class TagGraph {
     container;
@@ -1371,6 +1371,8 @@ class MMRComparison {
     comparisonQueue = [];
     isLoadingComparisons = false;
     fastModeCheckbox;
+    optimisticUpdates = new Map();
+    isSkipping = false;
     constructor() {
         this.toast = document.getElementById('mmrToast');
         this.notes = document.querySelectorAll('.mmr-note');
@@ -1404,6 +1406,7 @@ class MMRComparison {
         document.addEventListener('click', this.handleGlobalClick.bind(this));
     }
     handleGlobalClick(event) {
+        console.log("global click!");
         if (this.isToastVisible && !this.toast.contains(event.target)) {
             this.hideToastAndContinue();
         }
@@ -1415,6 +1418,7 @@ class MMRComparison {
         this.showNextComparison();
     }
     showNextComparison() {
+        this.isSkipping = false;
         if (this.comparisonQueue.length > 0) {
             const notes = this.comparisonQueue.shift();
             currentMMRNotes = notes;
@@ -1436,6 +1440,7 @@ class MMRComparison {
         if (this.isLoadingComparisons)
             return;
         this.isLoadingComparisons = true;
+        this.isSkipping = true;
         const tags = Array.from(window.tagGraph.selectedNodes).map((n) => n.tag_id);
         const password = document.getElementById("searchPassword").value;
         try {
@@ -1459,58 +1464,52 @@ class MMRComparison {
             this.isLoadingComparisons = false;
         }
     }
-    startComparisonOld() {
-        if (isComparisonInProgress)
-            return;
-        isComparisonInProgress = true;
-        this.clearComparison();
-        const tags = Array.from(window.tagGraph.selectedNodes).map((n) => n.tag_id);
-        const password = document.getElementById("searchPassword").value;
-        fetch(fetchpath + '/get_mmr_notes', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tags, password })
-        })
-            .then(response => response.json())
-            .then(notes => {
-            if (notes.length === 2) {
-                currentMMRNotes = notes;
-                this.displayNotes(notes);
-                document.getElementById('mmrModal').style.display = 'block';
-            }
-            else {
-                alert('Not enough notes found for comparison. Try selecting different tags.');
-            }
-            isComparisonInProgress = false;
-        })
-            .catch(error => {
-            console.error('Error fetching MMR notes:', error);
-            isComparisonInProgress = false;
-        });
-    }
     displayNotes(notes) {
         notes.forEach((note, index) => {
             const noteElement = document.getElementById(`mmrNote${index + 1}`);
             if (noteElement) {
-                noteElement.querySelector('.mmr-note-text').textContent = note.text;
-                noteElement.querySelector('.mmr-note-meta').textContent = `Author: ${note.author}, Source: ${note.source}, Visibility: ${getVisibilityEmoji(note.visibility)}`;
-                noteElement.querySelector('.mmr-note-tags').textContent = `Tags: ${note.tags}`;
+                const textElement = noteElement.querySelector('.mmr-note-text');
+                const metaElement = noteElement.querySelector('.mmr-note-meta');
+                const tagsElement = noteElement.querySelector('.mmr-note-tags');
                 const ratingElement = noteElement.querySelector('.mmr-note-rating');
-                ratingElement.textContent = `Rating: ${'⭐'.repeat(note.rating)}`;
-                ratingElement.style.display = areRatingsVisible ? 'block' : 'none';
+                const mmrElement = noteElement.querySelector('.mmr-note-mmr');
+                if (textElement)
+                    textElement.textContent = note.text;
+                if (metaElement)
+                    metaElement.textContent = `Author: ${note.author}, Source: ${note.source}, Visibility: ${getVisibilityEmoji(note.visibility)}`;
+                if (tagsElement)
+                    tagsElement.textContent = `Tags: ${note.tags}`;
+                if (ratingElement) {
+                    ratingElement.textContent = `Rating: ${'⭐'.repeat(note.rating)}`;
+                    ratingElement.style.display = areRatingsVisible ? 'block' : 'none';
+                }
+                // Apply optimistic MMR update
+                const optimisticMMR = note.mmr + (this.optimisticUpdates.get(note.note_id) || 0);
+                if (mmrElement)
+                    mmrElement.textContent = `MMR: ${optimisticMMR}`;
+            }
+            else {
+                console.error(`Element mmrNote${index + 1} not found`);
             }
         });
     }
     updateMMR(winnerIndex) {
-        if (this.pendingComparison)
+        if (this.pendingComparison || this.isSkipping)
             return;
         this.pendingComparison = true;
         const winnerId = currentMMRNotes[winnerIndex].note_id;
-        const _loserId = currentMMRNotes[1 - winnerIndex].note_id;
+        const loserId = currentMMRNotes[1 - winnerIndex].note_id;
+        // Optimistic update for fast mode fastMode
+        setTimeout(() => {
+            if (this.fastModeCheckbox.checked) {
+                console.log("hehehehaw50!");
+                this.hideToastAndContinue();
+            }
+        }, 50);
         fetch(fetchpath + '/update_mmr', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ winner_id: winnerId, loser_id: _loserId })
+            body: JSON.stringify({ winner_id: winnerId, loser_id: loserId })
         })
             .then(response => {
             if (!response.ok) {
@@ -1520,26 +1519,36 @@ class MMRComparison {
         })
             .then(result => {
             if (result.success) {
-                this.showComparisonResult(winnerIndex, result.winner_change, result.loser_change, result.winner_id, result.loser_id);
-                // Preemptively load more comparisons if the queue is getting low
-                if (this.fastModeCheckbox.checked) {
-                    this.hideToastAndContinue();
-                }
-                if (this.comparisonQueue.length < 3) {
-                    this.loadMoreComparisons();
-                }
+                this.handleSuccessfulUpdate(winnerIndex, result);
             }
             else {
-                console.error('Failed to update MMR:', result.error);
-                alert('Failed to update MMR. Please try again.');
-                this.pendingComparison = false;
+                this.handleFailedUpdate(winnerId, loserId);
             }
         })
             .catch(error => {
             console.error('Error updating MMR:', error);
-            alert('An error occurred while updating MMR. Please try again.');
+            this.handleFailedUpdate(winnerId, loserId);
+        })
+            .finally(() => {
             this.pendingComparison = false;
+            if (this.comparisonQueue.length < 3) {
+                this.loadMoreComparisons();
+            }
         });
+    }
+    handleSuccessfulUpdate(winnerIndex, result) {
+        const winnerId = currentMMRNotes[winnerIndex].note_id;
+        const loserId = currentMMRNotes[1 - winnerIndex].note_id;
+        // Remove optimistic updates
+        this.optimisticUpdates.delete(winnerId);
+        this.optimisticUpdates.delete(loserId);
+        this.showComparisonResult(winnerIndex, result.winner_change, result.loser_change, result.winner_id, result.loser_id);
+    }
+    handleFailedUpdate(winnerId, loserId) {
+        // Revert optimistic updates
+        this.optimisticUpdates.delete(winnerId);
+        this.optimisticUpdates.delete(loserId);
+        toastManager.showToast('Failed to update MMR. Please try again.', { isError: true, duration: 3000 });
     }
     showComparisonResult(_winnerIndex, winnerChange, loserChange, winnerId, _loserId) {
         if (this.toastTimeout !== null) {

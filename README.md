@@ -62,6 +62,19 @@ DyNotes is a note-taking application I created to organize thoughts using a dyna
 
 5. Open `http://localhost:5000` in your browser
 
+6. (Optional) If you want to test on mobile, get your ip adress. If you're using arch, you do that by `ip addr show`, or just look at the terminal when running `python app.py`.
+   
+   and then unblock port `5000`.
+
+   ```
+   sudo ufw allow 5000
+   ```
+   remember to close the port afterwards
+   ```
+   sudo ufw delete allow 5000
+   ```
+   If you dont use Arch you obviously have bigger problems in life, and I cannot help you with either.
+
 ## Development
 
 1. Make changes to `tagGraph.ts` or other files.

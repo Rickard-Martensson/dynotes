@@ -817,6 +817,8 @@ function enableInPlaceEditing(textContainer, note) {
         return;
     const originalContent = textContainer.innerHTML;
     const originalText = note.text;
+    const editContainer = document.createElement('div');
+    editContainer.className = 'edit-container';
     const textarea = document.createElement('textarea');
     textarea.value = originalText;
     textarea.style.width = '100%';
@@ -828,7 +830,100 @@ function enableInPlaceEditing(textContainer, note) {
     textarea.style.padding = '2px';
     textarea.style.boxSizing = 'border-box';
     textarea.style.overflow = 'hidden';
-    toastManager.showToast('Edit mode: <b>Esc</b> to revert, <b>Ctrl+Enter</b> to save', { duration: 3000 });
+    const buttonContainer = document.createElement('div');
+    buttonContainer.className = 'edit-button-container';
+    const saveButton = document.createElement('button');
+    saveButton.textContent = 'Save';
+    saveButton.className = 'edit-save-button';
+    const cancelButton = document.createElement('button');
+    cancelButton.textContent = 'Cancel';
+    cancelButton.className = 'edit-cancel-button';
+    buttonContainer.appendChild(saveButton);
+    buttonContainer.appendChild(cancelButton);
+    editContainer.appendChild(textarea);
+    editContainer.appendChild(buttonContainer);
+    textContainer.innerHTML = '';
+    textContainer.appendChild(editContainer);
+    function adjustHeight() {
+        textarea.style.height = 'auto';
+        textarea.style.height = `${textarea.scrollHeight}px`;
+    }
+    adjustHeight();
+    textarea.addEventListener('input', adjustHeight);
+    textarea.setSelectionRange(0, 0);
+    requestAnimationFrame(() => {
+        textarea.focus();
+        textarea.setSelectionRange(0, 0);
+    });
+    let isEditingComplete = false;
+    toastManager.showToast('Edit mode: <b>Esc</b> to cancel, <b>Ctrl+Enter</b> to save', { duration: 3000 });
+    async function saveChanges() {
+        if (isEditingComplete)
+            return;
+        isEditingComplete = true;
+        const newText = textarea.value;
+        if (newText !== originalText) {
+            try {
+                const updatedNote = await saveEditedNoteText(note.note_id, newText, note);
+                note.text = updatedNote.text;
+                updateNoteDisplay(textContainer, updatedNote.text);
+                toastManager.showToast('Changes saved successfully', { duration: 2000 });
+            }
+            catch (error) {
+                console.error('Failed to save note:', error);
+                updateNoteDisplay(textContainer, originalText);
+                toastManager.showToast('Failed to save changes', { isError: true, duration: 3000 });
+            }
+        }
+        else {
+            updateNoteDisplay(textContainer, originalText);
+        }
+    }
+    function revertChanges() {
+        if (isEditingComplete)
+            return;
+        isEditingComplete = true;
+        updateNoteDisplay(textContainer, originalText);
+        toastManager.showToast('Changes reverted', { duration: 2000 });
+    }
+    function updateNoteDisplay(container, text) {
+        if (container.parentNode) {
+            requestAnimationFrame(() => {
+                container.innerHTML = parseMarkdown(text);
+            });
+        }
+    }
+    saveButton.addEventListener('click', saveChanges);
+    cancelButton.addEventListener('click', revertChanges);
+    textarea.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            revertChanges();
+        }
+        else if ((e.key === 'Enter' && e.ctrlKey) || (e.key === 'Enter' && e.metaKey)) {
+            e.preventDefault();
+            saveChanges();
+        }
+    });
+}
+function enableInPlaceEditing2(textContainer, note) {
+    if (textContainer.querySelector('textarea'))
+        return;
+    const originalContent = textContainer.innerHTML;
+    const originalText = note.text;
+    const textarea = document.createElement('textarea');
+    textarea.value = originalText;
+    textarea.style.width = '100%';
+    textarea.style.minHeight = `${textContainer.offsetHeight}px`;
+    textarea.style.fontFamily = 'inherit';
+    textarea.style.fontSize = 'inherit';
+    textarea.style.resize = 'none';
+    textarea.style.border = '1px solid #ccc';
+    textarea.style.padding = '2px';
+    textarea.style.boxSizing = 'border-box';
+    textarea.style.overflow = 'hidden';
+    // toastManager.showToast('Edit mode: <b>Esc</b> to revert, <b>Ctrl+Enter</b> to save', { duration: 3000 });
+    toastManager.showToast('Edit mode: <b>Esc</b> to revert, <b>Ctrl+Enter</b> to save<br>On mobile: <b>Swipe up</b> to save, <b>Swipe down</b> to revert', { duration: 5000 });
     function adjustHeight() {
         textarea.style.height = 'auto';
         textarea.style.height = `${textarea.scrollHeight}px`;

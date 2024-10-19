@@ -325,6 +325,7 @@ def index():
 
 @app.route("/edit_note", methods=["POST"])
 def edit_note():
+
     db = get_db()
     data = request.json
     cursor = db.cursor()
@@ -332,28 +333,40 @@ def edit_note():
     try:
         cursor.execute("BEGIN")
 
-        cursor.execute(
+        # Fetch the current note data
+        cursor.execute("SELECT * FROM Notes WHERE note_id = ?", (data["noteId"],))
+        current_note = cursor.fetchone()
+
+        if not current_note:
+            raise Exception("Note not found")
+
+        # Prepare the update fields
+        update_fields = []
+        update_values = []
+        for field in ["text", "author", "rating", "source", "visibility"]:
+            if field in data:
+                update_fields.append(f"{field} = ?")
+                update_values.append(data[field])
+
+        # Only proceed with update if there are fields to update
+        if update_fields:
+            # Construct and execute the update query
+            update_query = f"""
+            UPDATE Notes
+            SET {', '.join(update_fields)}
+            WHERE note_id = ?
             """
-        UPDATE Notes
-        SET text = ?, author = ?, rating = ?, source = ?, visibility = ?
-        WHERE note_id = ?
-        """,
-            (
-                data["text"],
-                data["author"],
-                data["rating"],
-                data["source"],
-                data["visibility"],
-                data["noteId"],
-            ),
-        )
+            update_values.append(data["noteId"])
+            cursor.execute(update_query, update_values)
 
-        # Delete existing tag associations
-        cursor.execute("DELETE FROM NoteTags WHERE note_id = ?", (data["noteId"],))
+        # Update tags only if they're provided
+        if "tags" in data:
+            # Delete existing tag associations
+            cursor.execute("DELETE FROM NoteTags WHERE note_id = ?", (data["noteId"],))
 
-        # Add new tag associations
-        for tag_id in data["tags"]:
-            cursor.execute("INSERT INTO NoteTags (note_id, tag_id) VALUES (?, ?)", (data["noteId"], tag_id))
+            # Add new tag associations
+            for tag_id in data["tags"]:
+                cursor.execute("INSERT INTO NoteTags (note_id, tag_id) VALUES (?, ?)", (data["noteId"], tag_id))
 
         db.commit()
         return jsonify({"success": True})

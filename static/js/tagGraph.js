@@ -812,6 +812,107 @@ function toggleLoadingAnimation(isSerarching) {
     if (loadingIndicator)
         loadingIndicator.style.display = isSerarching ? 'block' : 'none';
 }
+function enableInPlaceEditing(textContainer, note) {
+    if (textContainer.querySelector('textarea'))
+        return;
+    const originalContent = textContainer.innerHTML;
+    const originalText = note.text;
+    const textarea = document.createElement('textarea');
+    textarea.value = originalText;
+    textarea.style.width = '100%';
+    textarea.style.minHeight = `${textContainer.offsetHeight}px`;
+    textarea.style.fontFamily = 'inherit';
+    textarea.style.fontSize = 'inherit';
+    textarea.style.resize = 'none';
+    textarea.style.border = '1px solid #ccc';
+    textarea.style.padding = '2px';
+    textarea.style.boxSizing = 'border-box';
+    textarea.style.overflow = 'hidden';
+    toastManager.showToast('Edit mode: <b>Esc</b> to revert, <b>Ctrl+Enter</b> to save', { duration: 3000 });
+    function adjustHeight() {
+        textarea.style.height = 'auto';
+        textarea.style.height = `${textarea.scrollHeight}px`;
+    }
+    textContainer.innerHTML = '';
+    textContainer.appendChild(textarea);
+    adjustHeight();
+    textarea.addEventListener('input', adjustHeight);
+    textarea.setSelectionRange(0, 0);
+    requestAnimationFrame(() => {
+        textarea.focus();
+        textarea.setSelectionRange(0, 0);
+    });
+    let isEditingComplete = false;
+    async function saveChanges() {
+        if (isEditingComplete)
+            return;
+        isEditingComplete = true;
+        const newText = textarea.value;
+        if (newText !== originalText) {
+            try {
+                const updatedNote = await saveEditedNoteText(note.note_id, newText, note);
+                note.text = updatedNote.text;
+                updateNoteDisplay(textContainer, updatedNote.text);
+            }
+            catch (error) {
+                console.error('Failed to save note:', error);
+                updateNoteDisplay(textContainer, originalText);
+            }
+        }
+        else {
+            updateNoteDisplay(textContainer, originalText);
+        }
+    }
+    function revertChanges() {
+        if (isEditingComplete)
+            return;
+        isEditingComplete = true;
+        updateNoteDisplay(textContainer, originalText);
+    }
+    function updateNoteDisplay(container, text) {
+        if (container.parentNode) {
+            requestAnimationFrame(() => {
+                container.innerHTML = parseMarkdown(text);
+            });
+        }
+    }
+    textarea.addEventListener('blur', saveChanges);
+    textarea.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            revertChanges();
+        }
+        else if ((e.key === 'Enter' && e.ctrlKey) || (e.key === 'Enter' && e.metaKey)) {
+            e.preventDefault();
+            saveChanges();
+        }
+    });
+}
+async function saveEditedNoteText(noteId, newText, originalNote) {
+    try {
+        const response = await fetch(fetchpath + '/edit_note', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                noteId,
+                text: newText
+            })
+        });
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to save note');
+        }
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to save note');
+        }
+        return { ...originalNote, text: newText };
+    }
+    catch (error) {
+        console.error('Error saving note:', error);
+        throw error;
+    }
+}
 function displaySearchResults(results) {
     const resultsContainer = document.getElementById("results");
     resultsContainer.innerHTML = "";
@@ -843,6 +944,41 @@ function displaySearchResults(results) {
         const textContainer = document.createElement("div");
         textContainer.className = "note-text";
         textContainer.innerHTML = parseMarkdown(note.text); // Use innerHTML with parsed Markdown
+        let longPressTimer = null;
+        let isLongPress = false;
+        textContainer.addEventListener('mousedown', (e) => {
+            isLongPress = false;
+            longPressTimer = window.setTimeout(() => {
+                isLongPress = true;
+                enableInPlaceEditing(textContainer, note);
+            }, 500);
+        });
+        textContainer.addEventListener('mouseup', (e) => {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+            }
+        });
+        textContainer.addEventListener('click', (e) => {
+            if (isLongPress) {
+                e.preventDefault(); // Prevent normal click behavior
+            }
+        });
+        // Touch events for mobile
+        textContainer.addEventListener('touchstart', (e) => {
+            isLongPress = false;
+            longPressTimer = window.setTimeout(() => {
+                isLongPress = true;
+                enableInPlaceEditing(textContainer, note);
+            }, 500);
+        });
+        textContainer.addEventListener('touchend', (e) => {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+            }
+            if (isLongPress) {
+                e.preventDefault(); // Prevent normal touch behavior
+            }
+        });
         const metaContainer = document.createElement("div");
         metaContainer.className = "note-meta";
         const ratingAndControlsElement = document.createElement("div");
@@ -1275,6 +1411,33 @@ async function addNote() {
         // alert('Error adding note: ' + error);
     }
 }
+async function calculateStats() {
+    try {
+        const response = await fetch(fetchpath + '/get_stats');
+        const data = await response.json();
+        document.getElementById('noteCount').textContent = data.note_count.toString();
+        document.getElementById('tagCount').textContent = data.tag_count.toString();
+        document.getElementById('relationshipCount').textContent = data.relationship_count.toString();
+        document.getElementById('avgRating').textContent = data.avg_rating.toString();
+        const visibilityDist = Object.entries(data.visibility_counts)
+            .map(([level, count]) => `${getVisibilityEmoji(+level)}(${level}): ${count}`)
+            .join(', ');
+        document.getElementById('visibilityDistribution').textContent = visibilityDist;
+        const topTags = data.top_tags
+            .map((tag) => `${tag.name} (${tag.count})`)
+            .join(', ');
+        document.getElementById('topTags').textContent = topTags;
+        document.getElementById('recentNotes').textContent = data.recent_notes.toString();
+        toastManager.showToast('Stats calculated successfully!', { duration: 3000 });
+    }
+    catch (error) {
+        console.error('Error fetching stats:', error);
+        toastManager.showToast('Failed to calculate stats', { isError: true, details: String(error), duration: 5000 });
+    }
+}
+/**
+ * Depricated
+ */
 function updateStats() {
     fetch(fetchpath + '/get_stats')
         .then(response => response.json())
@@ -1330,12 +1493,12 @@ class ToastManager {
         toast.className = 'toast';
         const messageElement = document.createElement('div');
         messageElement.className = 'toast-message';
-        messageElement.textContent = message;
+        messageElement.innerHTML = message;
         toast.appendChild(messageElement);
         if (details) {
             const detailsElement = document.createElement('div');
             detailsElement.className = 'toast-details';
-            detailsElement.textContent = details;
+            detailsElement.innerHTML = details;
             toast.appendChild(detailsElement);
         }
         if (isError) {
@@ -1499,10 +1662,10 @@ class MMRComparison {
         this.pendingComparison = true;
         const winnerId = currentMMRNotes[winnerIndex].note_id;
         const loserId = currentMMRNotes[1 - winnerIndex].note_id;
-        // Optimistic update for fast mode fastMode
+        // Optimistic update for fast mode fastMode. This is such an ugly hack. 
         setTimeout(() => {
             if (this.fastModeCheckbox.checked) {
-                console.log("hehehehaw50!");
+                // console.log("hehehehaw50!")
                 this.hideToastAndContinue();
             }
         }, 50);
@@ -1531,7 +1694,7 @@ class MMRComparison {
         })
             .finally(() => {
             this.pendingComparison = false;
-            if (this.comparisonQueue.length < 3) {
+            if (this.comparisonQueue.length < 7) {
                 this.loadMoreComparisons();
             }
         });
@@ -1648,7 +1811,11 @@ document.addEventListener("DOMContentLoaded", () => {
             showAddNoteBtn.textContent = addNoteSection.style.display === 'none' ? 'Add Note ▼' : 'Hide Add Note ▲';
         });
     }
-    updateStats();
+    const calculateStatsBtn = document.getElementById('calculateStats');
+    if (calculateStatsBtn) {
+        calculateStatsBtn.addEventListener('click', calculateStats);
+    }
+    // updateStats(); // this is inefficient
     const closeAddNoteBtn = document.getElementById('closeAddNoteBtn');
     if (closeAddNoteBtn) {
         closeAddNoteBtn.addEventListener('click', () => {

@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DyNotes</title>
-    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='css/favicon.png') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='css/favicon_5.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/nodeMenu.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/noteForm.css') }}">
@@ -47,6 +47,7 @@
             <input type="password" id="searchPassword" value="pw5" placeholder="Enter password for higher visibility">
             <button id="updateGlobalPasswords">Update Global Passwords</button>
             <button id="generateTagPassword">Generate Tag Password</button>
+            <button id="calculateStats">Calculate Stats</button>
             <div id="statsContainer">
                 <h3>DyNotes Stats</h3>
                 <p>Total Notes: <span id="noteCount">Loading...</span></p>

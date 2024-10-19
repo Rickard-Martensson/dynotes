@@ -1,0 +1,28 @@
+#quickNotesModal .modal-content {
+    width: 90%;
+    max-width: 800px;
+}
+
+#quickNotesContainer {
+    display: flex;
+    height: 400px;
+    margin-bottom: 10px;
+}
+
+#quickNotesEditor,
+#quickNotesPreview {
+    flex: 1;
+    padding: 10px;
+    overflow-y: auto;
+}
+
+#quickNotesEditor {
+    font-family: Cascode, monospace;
+    resize: none;
+    border: 1px solid var(--border-color);
+}
+
+#quickNotesPreview {
+    background-color: white;
+    border: 1px solid var(--border-color);
+}

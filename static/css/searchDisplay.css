@@ -327,3 +327,45 @@
     white-space: normal;
     word-wrap: break-word;
 }
+
+.edit-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.edit-button-container {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: -5px;
+    gap: 5px;
+    /* Adds space between buttons */
+}
+
+.edit-save-button,
+.edit-cancel-button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 5px 5px;
+    margin: 5px 0;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    font-family: Cascode, monospace;
+}
+
+.edit-save-button:hover,
+.edit-cancel-button:hover {
+    background-color: var(--button-hover-color);
+}
+
+.edit-cancel-button {
+    background-color: #84817a;
+    /* Using the 'brown' color from your existing buttons */
+}
+
+.edit-cancel-button:hover {
+    background-color: #747069;
+    /* Slightly darker shade for hover state */
+}

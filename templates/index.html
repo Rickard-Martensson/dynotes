@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/searchDisplay.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/modal.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/toastManager.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/quicknotes.css') }}">
 
     <style>
         #container {
@@ -47,6 +48,8 @@
             <input type="password" id="searchPassword" value="pw5" placeholder="Enter password for higher visibility">
             <button id="updateGlobalPasswords">Update Global Passwords</button>
             <button id="generateTagPassword">Generate Tag Password</button>
+            <!-- Add this inside the settings-content div in index.html -->
+            <button id="openQuickNotes">Quick Notes</button>
             <button id="calculateStats">Calculate Stats</button>
             <div id="statsContainer">
                 <h3>DyNotes Stats</h3>
@@ -264,6 +267,18 @@
         const tagGraph = new TagGraph("tagGraph");
         tagGraph.initialize();
     </script> -->
+
+    <div id="quickNotesModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Quick Notes</h2>
+            <div id="quickNotesContainer">
+                <textarea id="quickNotesEditor" placeholder="Jot down your ideas here..."></textarea>
+                <div id="quickNotesPreview" class="note-text"></div>
+            </div>
+            <button id="saveQuickNotes">Save</button>
+        </div>
+    </div>
 </body>
 
 </html>

@@ -1,7 +1,7 @@
 "use strict";
 // tagGraph.ts
 // import * as d3 from 'd3';
-const IS_PROD = false;
+const IS_PROD = true;
 const fetchpath = IS_PROD ? "/dynotes" : "";
 class TagGraph {
     container;
@@ -1891,10 +1891,74 @@ function initializeFullscreenToggle() {
         });
     }
 }
+function initializeQuickNotes() {
+    const openQuickNotesBtn = document.getElementById('openQuickNotes');
+    const quickNotesModal = document.getElementById('quickNotesModal');
+    const closeQuickNotesBtn = quickNotesModal?.querySelector('.close');
+    const quickNotesEditor = document.getElementById('quickNotesEditor');
+    const saveQuickNotesBtn = document.getElementById('saveQuickNotes');
+    if (openQuickNotesBtn && quickNotesModal && closeQuickNotesBtn && quickNotesEditor && saveQuickNotesBtn) {
+        openQuickNotesBtn.addEventListener('click', () => {
+            quickNotesModal.style.display = 'block';
+            loadQuickNotes();
+        });
+        closeQuickNotesBtn.addEventListener('click', () => {
+            quickNotesModal.style.display = 'none';
+        });
+        quickNotesEditor.addEventListener('input', handleQuickNotesInput);
+        quickNotesEditor.addEventListener('keydown', handleQuickNotesKeydown);
+        saveQuickNotesBtn.addEventListener('click', saveQuickNotes);
+        window.addEventListener('click', (event) => {
+            if (event.target === quickNotesModal) {
+                quickNotesModal.style.display = 'none';
+            }
+        });
+    }
+}
+function loadQuickNotes() {
+    const quickNotesEditor = document.getElementById('quickNotesEditor');
+    const savedNotes = localStorage.getItem('quickNotes') || '';
+    if (quickNotesEditor) {
+        quickNotesEditor.innerHTML = savedNotes.split('\n').map(line => `<p class="markdown-line">${parseMarkdown(line)}</p>`).join('');
+    }
+}
+function saveQuickNotes() {
+    const quickNotesEditor = document.getElementById('quickNotesEditor');
+    if (quickNotesEditor) {
+        const plainText = Array.from(quickNotesEditor.children)
+            .map(child => child.textContent)
+            .join('\n');
+        localStorage.setItem('quickNotes', plainText);
+        toastManager.showToast('Quick Notes saved successfully!', { duration: 3000 });
+    }
+}
+function handleQuickNotesInput(event) {
+    const target = event.target;
+    if (target.tagName === 'P') {
+        const line = target.textContent || '';
+        target.innerHTML = parseMarkdown(line);
+    }
+}
+function handleQuickNotesKeydown(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        const selection = window.getSelection();
+        const range = selection?.getRangeAt(0);
+        const newParagraph = document.createElement('p');
+        newParagraph.className = 'markdown-line';
+        newParagraph.textContent = '\n';
+        range?.insertNode(newParagraph);
+        range?.setStartAfter(newParagraph);
+        range?.setEndAfter(newParagraph);
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+    }
+}
 // Initialize the graph when the DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
     window.tagGraph = new TagGraph("tagGraph");
     window.tagGraph.initialize();
+    initializeQuickNotes();
     // Add event listener for the "Add Note" button
     const showAddNoteBtn = document.getElementById('showAddNoteBtn');
     const addNoteSection = document.getElementById('addNoteSection');

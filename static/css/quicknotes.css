@@ -1,28 +1,37 @@
 #quickNotesModal .modal-content {
-    width: 90%;
-    max-width: 800px;
+    width: 95%;
+    height: 95%;
+    max-width: none;
+    display: flex;
+    flex-direction: column;
 }
 
 #quickNotesContainer {
-    display: flex;
-    height: 400px;
-    margin-bottom: 10px;
-}
-
-#quickNotesEditor,
-#quickNotesPreview {
-    flex: 1;
-    padding: 10px;
+    flex-grow: 1;
     overflow-y: auto;
+    margin-bottom: 10px;
 }
 
 #quickNotesEditor {
     font-family: Cascode, monospace;
-    resize: none;
-    border: 1px solid var(--border-color);
-}
-
-#quickNotesPreview {
+    min-height: 100%;
+    padding: 10px;
     background-color: white;
     border: 1px solid var(--border-color);
+    outline: none;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+#quickNotesEditor p {
+    margin: 0;
+    line-height: 1.5;
+}
+
+#quickNotesEditor .markdown-line {
+    display: block;
+}
+
+#quickNotesEditor .markdown-line:focus {
+    background-color: #f0f0f0;
 }
